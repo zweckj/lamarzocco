@@ -68,6 +68,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed(msg) from ex
         except (RequestNotSuccessful, Exception) as ex:
             _LOGGER.error(ex)
+            _LOGGER.exception("Update coordinator failed.")
             raise UpdateFailed("Querying API failed. Error: %s", ex)
         _LOGGER.debug("Current status: %s", str(self._lm.current_status))
         self._initialized = True
