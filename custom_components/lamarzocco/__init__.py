@@ -5,8 +5,9 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .api import LaMarzocco
+from .lm_client import LaMarzoccoClient
 from .const import DOMAIN
+from .coordinator import LmApiCoordinator
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,30 +23,39 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass, config_entry):
     """Set up La Marzocco as config entry."""
-    lm = await LaMarzocco.create(hass=hass, config_entry=config_entry)
 
-    hass.data[DOMAIN][config_entry.entry_id] = lm
+    config_entry.async_on_unload(config_entry.add_update_listener(options_update_listener))
 
-    for platform in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
-        )
+    lm = LaMarzoccoClient(hass, config_entry.data)
+
+    hass.data[DOMAIN][config_entry.entry_id] = coordinator = LmApiCoordinator(hass, config_entry, lm)
+
+    await coordinator.async_config_entry_first_refresh()
+
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     """Set up global services."""
     await async_setup_services(hass, config_entry)
-
     return True
+
+
+async def options_update_listener(hass: HomeAssistant, entry: ConfigEntry):
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload a config entry."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator.terminate_websocket()
+
     services = list(hass.services.async_services().get(DOMAIN).keys())
     [hass.services.async_remove(DOMAIN, service) for service in services]
 
     unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
 
     if unload_ok:
-        await hass.data[DOMAIN][config_entry.entry_id].close()
         hass.data[DOMAIN].pop(config_entry.entry_id)
+        hass.data[DOMAIN] = {}
 
     return unload_ok

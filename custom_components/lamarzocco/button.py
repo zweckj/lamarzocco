@@ -39,29 +39,26 @@ ENTITIES = {
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up button entities and services."""
 
-    lm = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoButton(lm, button_type, hass)
+        LaMarzoccoButton(coordinator, button_type, hass)
         for button_type in ENTITIES
-        if lm.model_name in ENTITIES[button_type][ENTITY_MAP]
+        if coordinator.lm.model_name in ENTITIES[button_type][ENTITY_MAP]
     )
 
-    await async_setup_entity_services(lm)
+    await async_setup_entity_services(coordinator.lm)
 
 
 class LaMarzoccoButton(EntityBase, ButtonEntity):
     """Button supporting backflush."""
 
-    def __init__(self, lm, button_type, hass):
+    def __init__(self, coordinator, button_type, hass):
         """Initialise buttons."""
-        self._object_id = button_type
-        self._hass = hass
-        self._lm = lm
-        self._entities = ENTITIES
-        self._entity_type = self._entities[self._object_id][ENTITY_TYPE]
+        super().__init__(coordinator, hass, button_type, ENTITIES, ENTITY_TYPE)
 
     async def async_press(self, **kwargs) -> None:
         """Press button."""
         await call_service(
             getattr(self._lm, self._entities[self._object_id][ENTITY_FUNC])
         )
+        await self._update_ha_state()

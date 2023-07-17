@@ -37,7 +37,7 @@ set_dose:
   # Different fields that your service accepts
   fields:
     key:
-      description: "The key to program (1-5)"
+      description: "The key to program (1-4)"
       example: 1
     pulses:
       description: "The dose in pulses (roughly ~0.5ml per pulse)"

@@ -1,18 +1,17 @@
 {
   "domain": "lamarzocco",
   "name": "La Marzocco",
-  "version": "0.11.2",
+  "version": "0.12.0",
   "config_flow": true,
   "documentation": "https://github.com/rccoleman/lamarzocco",
   "issue_tracker": "https://github.com/rccoleman/lamarzocco/issues",
-  "requirements": ["lmdirect==0.9.4", "lmcloud==0.3.5"],
+  "requirements": ["lmcloud==0.3.18"],
   "ssdp": [],
-  "zeroconf": ["_marzocco._tcp.local."],
   "homekit": {},
   "dependencies": [
     "bluetooth_adapters"
   ],
   "codeowners": ["@rccoleman", "@zweckj"],
   "iot_class": "cloud_polling",
-  "loggers": ["lmdirect"]
+  "loggers": ["lmcloud"]
 }

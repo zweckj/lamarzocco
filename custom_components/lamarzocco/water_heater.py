@@ -21,19 +21,24 @@ from .const import (
     ENTITY_NAME,
     ENTITY_TEMP_TAG,
     ENTITY_TSET_TAG,
+    ENTITY_TSTATE_TAG,
     ENTITY_TYPE,
     ENTITY_UNITS,
+    MODE_HEAT,
+    MODE_OFF,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
+    OPERATION_MODES,
+    POWER,
+    STEAM_BOILER_ENABLE,
     TEMP_COFFEE,
     TSET_COFFEE,
     TEMP_STEAM,
     TSET_STEAM,
     TYPE_COFFEE_TEMP,
-    TYPE_STEAM_TEMP,
-    LM_CLOUD_MODELS
+    TYPE_STEAM_TEMP
 )
 from .entity_base import EntityBase
 from .services import async_setup_entity_services, call_service
@@ -54,6 +59,7 @@ ENTITIES = {
     "coffee": {
         ENTITY_TEMP_TAG: TEMP_COFFEE,
         ENTITY_TSET_TAG: TSET_COFFEE,
+        ENTITY_TSTATE_TAG: POWER,
         ENTITY_NAME: "Coffee",
         ENTITY_MAP: {
             MODEL_GS3_AV: ATTR_MAP_COFFEE,
@@ -68,6 +74,7 @@ ENTITIES = {
     "steam": {
         ENTITY_TEMP_TAG: TEMP_STEAM,
         ENTITY_TSET_TAG: TSET_STEAM,
+        ENTITY_TSTATE_TAG: STEAM_BOILER_ENABLE,
         ENTITY_NAME: "Steam",
         ENTITY_MAP: {
             MODEL_GS3_AV: ATTR_MAP_STEAM,
@@ -83,15 +90,15 @@ ENTITIES = {
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up water heater type entities."""
-    lm = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoWaterHeater(lm, water_heater_type, hass, config_entry)
+        LaMarzoccoWaterHeater(coordinator, water_heater_type, hass, config_entry)
         for water_heater_type in ENTITIES
-        if lm.model_name in ENTITIES[water_heater_type][ENTITY_MAP]
+        if coordinator.lm.model_name in ENTITIES[water_heater_type][ENTITY_MAP]
     )
 
-    await async_setup_entity_services(lm)
+    await async_setup_entity_services(coordinator.lm)
 
 
 class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
@@ -101,23 +108,13 @@ class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
     _attr_supported_features = SUPPORT_TARGET_TEMPERATURE
     _attr_precision = PRECISION_TENTHS
 
-    def __init__(self, lm, water_heater_type, hass, config_entry):
+    def __init__(self, coordinator, water_heater_type, hass, config_entry):
         """Initialize water heater."""
-        self._object_id = water_heater_type
-        self._lm = lm
-        self._entities = ENTITIES
-        self._hass = hass
-        self._entity_type = self._entities[self._object_id][ENTITY_TYPE]
+        super().__init__(coordinator, hass, water_heater_type, ENTITIES, ENTITY_TYPE)
 
         """Set dynamic properties."""
-        if lm.model_name in LM_CLOUD_MODELS:
-            self._attr_min_temp = COFFEE_MIN_TEMP_LMU if self._object_id == "coffee" else min(LMU_STEAM_STEPS)
-            self._attr_max_temp = COFFEE_MAX_TEMP_LMU if self._object_id == "coffee" else max(LMU_STEAM_STEPS)
-        else:
-            self._attr_min_temp = COFFEE_MIN_TEMP if self._object_id == "coffee" else STEAM_MIN_TEMP
-            self._attr_max_temp = COFFEE_MAX_TEMP if self._object_id == "coffee" else STEAM_MAX_TEMP
-
-        self._lm.register_callback(self.update_callback)
+        self._attr_min_temp = COFFEE_MIN_TEMP_LMU if self._object_id == "coffee" else min(LMU_STEAM_STEPS)
+        self._attr_max_temp = COFFEE_MAX_TEMP_LMU if self._object_id == "coffee" else max(LMU_STEAM_STEPS)
 
     @property
     def state(self):
@@ -154,6 +151,20 @@ class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
         return self._entities[self._object_id][ENTITY_UNITS]
 
     @property
+    def operation_list(self):
+        return OPERATION_MODES
+
+    @property
+    def current_operation(self):
+        is_on = self._lm.current_status.get(
+            self._entities[self._object_id][ENTITY_TSTATE_TAG], False
+        )
+        if is_on:
+            return MODE_HEAT
+        else:
+            return MODE_OFF
+
+    @property
     def state_attributes(self):
         temps = {
             ATTR_CURRENT_TEMPERATURE: self.current_temperature,
@@ -168,4 +179,5 @@ class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
 
         _LOGGER.debug(f"Setting {self._object_id} to {temperature}")
         await call_service(func, temp=round(temperature, 1))
+        await self._update_ha_state()
         return True

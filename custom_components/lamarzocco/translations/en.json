@@ -2,7 +2,8 @@
     "config": {
         "flow_title": "La Marzocco Espresso {host}",
         "abort": {
-            "single_instance_allowed": "Device is already configured.  On a single instance is allowed."
+            "single_instance_allowed": "Device is already configured. Only a single instance is allowed.",
+            "reauth_successful": "Credentials updated successfully."
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -25,6 +26,31 @@
                     "client_secret": "Client Secret",
                     "password": "Password",
                     "username": "Username"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Credentials invalid",
+                "description": "One or more of your provided credentials are invalid.",
+                "data": {
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret",
+                    "password": "Password",
+                    "username": "Username"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Update Settings",
+                "data": {
+                    "host": "IP Address",
+                    "client_id": "Client ID",
+                    "client_secret": "Client Secret",
+                    "password": "Password",
+                    "username": "Username",
+                    "use_websocket": "Check to use WebSockets to connect to machine. This will give you access to a sensor indicating an active brew."
                 }
             }
         }

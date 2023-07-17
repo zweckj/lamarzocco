@@ -1,11 +1,11 @@
 """Global services for the La Marzocco integration."""
 
+import asyncio
 import logging
 
 import voluptuous as vol
 from homeassistant.helpers import entity_platform
-from lmdirect import InvalidInput
-from lmdirect.msgs import Msg
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DAYS,
@@ -17,7 +17,14 @@ from .const import (
     MODEL_LMU,
     MODELS_SUPPORTED,
     PLATFORM,
+    SET_AUTO_ON_OFF_ENABLE,
+    SET_AUTO_ON_OFF_TIMES,
+    SET_DOSE,
+    SET_DOSE_HOT_WATER,
     SCHEMA,
+    UPDATE_DELAY,
+    SET_PREBREW_TIMES,
+    SET_PREINFUSION_TIME
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,9 +33,14 @@ _LOGGER = logging.getLogger(__name__)
 async def call_service(func, *args, **kwargs):
     try:
         await func(*args, **kwargs)
-    except InvalidInput as err:
-        _LOGGER.error(f"{err}, returning FALSE")
-        return False
+    except Exception as ex:
+        _LOGGER.error(f"Service call encountered error: {ex}")
+        raise HomeAssistantError(ex) from ex
+
+
+async def update_ha_state(coordinator):
+    await asyncio.sleep(UPDATE_DELAY)
+    await coordinator.async_request_refresh()
 
 
 async def async_setup_services(hass, config_entry):
@@ -41,6 +53,7 @@ async def async_setup_services(hass, config_entry):
 
         _LOGGER.debug(f"Setting auto on/off for {day_of_week} to {enable}")
         await call_service(lm.set_auto_on_off_enable, day_of_week=day_of_week, enable=enable)
+        await update_ha_state(coordinator)
         return True
 
     async def set_auto_on_off_times(service):
@@ -62,6 +75,7 @@ async def async_setup_services(hass, config_entry):
             hour_off=hour_off,
             minute_off=minute_off,
         )
+        await update_ha_state(coordinator)
         return True
 
     async def set_dose(service):
@@ -71,6 +85,7 @@ async def async_setup_services(hass, config_entry):
 
         _LOGGER.debug(f"Setting dose for key:{key} to pulses:{pulses}")
         await call_service(lm.set_dose, key=key, pulses=pulses)
+        await update_ha_state(coordinator)
         return True
 
     async def set_dose_hot_water(service):
@@ -79,6 +94,7 @@ async def async_setup_services(hass, config_entry):
 
         _LOGGER.debug(f"Setting hot water dose to seconds:{seconds}")
         await call_service(lm.set_dose_hot_water, seconds=seconds)
+        await update_ha_state(coordinator)
         return True
 
     async def set_prebrew_times(service):
@@ -96,6 +112,7 @@ async def async_setup_services(hass, config_entry):
             seconds_on=seconds_on,
             seconds_off=seconds_off,
         )
+        await update_ha_state(coordinator)
         return True
 
     async def set_preinfusion_time(service):
@@ -111,10 +128,11 @@ async def async_setup_services(hass, config_entry):
             key=key,
             seconds=seconds,
         )
+        await update_ha_state(coordinator)
         return True
 
     INTEGRATION_SERVICES = {
-        Msg.SET_DOSE: {
+        SET_DOSE: {
             SCHEMA: {
                 vol.Required("key"): vol.All(vol.Coerce(int), vol.Range(min=1, max=5)),
                 vol.Required("pulses"): vol.All(
@@ -124,7 +142,7 @@ async def async_setup_services(hass, config_entry):
             MODELS_SUPPORTED: [MODEL_GS3_AV],
             FUNC: set_dose,
         },
-        Msg.SET_DOSE_HOT_WATER: {
+        SET_DOSE_HOT_WATER: {
             SCHEMA: {
                 vol.Required("seconds"): vol.All(
                     vol.Coerce(int), vol.Range(min=0, max=30)
@@ -133,7 +151,7 @@ async def async_setup_services(hass, config_entry):
             MODELS_SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP],
             FUNC: set_dose_hot_water,
         },
-        Msg.SET_AUTO_ON_OFF_ENABLE: {
+        SET_AUTO_ON_OFF_ENABLE: {
             SCHEMA: {
                 vol.Required("day_of_week"): vol.In(DAYS),
                 vol.Required("enable"): vol.Boolean(),
@@ -141,7 +159,7 @@ async def async_setup_services(hass, config_entry):
             MODELS_SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU],
             FUNC: set_auto_on_off_enable,
         },
-        Msg.SET_AUTO_ON_OFF_TIMES: {
+        SET_AUTO_ON_OFF_TIMES: {
             SCHEMA: {
                 vol.Required("day_of_week"): vol.In(DAYS),
                 vol.Required("hour_on"): vol.All(
@@ -160,7 +178,7 @@ async def async_setup_services(hass, config_entry):
             MODELS_SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU],
             FUNC: set_auto_on_off_times,
         },
-        Msg.SET_PREBREW_TIMES: {
+        SET_PREBREW_TIMES: {
             SCHEMA: {
                 vol.Required("seconds_on"): vol.All(
                     vol.Coerce(float), vol.Range(min=0, max=5.9)
@@ -172,7 +190,7 @@ async def async_setup_services(hass, config_entry):
             MODELS_SUPPORTED: [MODEL_GS3_AV, MODEL_LM, MODEL_LMU],
             FUNC: set_prebrew_times,
         },
-        Msg.SET_PREINFUSION_TIME: {
+        SET_PREINFUSION_TIME: {
             SCHEMA: {
                 vol.Required("seconds"): vol.All(
                     vol.Coerce(float), vol.Range(min=0, max=24.9)
@@ -190,19 +208,20 @@ async def async_setup_services(hass, config_entry):
         # Integration-level services have already been added. Return.
         return
 
-    lm = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    lm = coordinator.data
 
     """Set the max prebrew button based on model"""
     if lm.model_name in [MODEL_GS3_AV, MODEL_LM, MODEL_LMU]:
         max_button_number = 4 if lm.model_name == MODEL_GS3_AV else 1
-        INTEGRATION_SERVICES[Msg.SET_PREBREW_TIMES][SCHEMA].update(
+        INTEGRATION_SERVICES[SET_PREBREW_TIMES][SCHEMA].update(
             {
                 vol.Required("key"): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=max_button_number)
                 )
             },
         )
-        INTEGRATION_SERVICES[Msg.SET_PREINFUSION_TIME][SCHEMA].update(
+        INTEGRATION_SERVICES[SET_PREINFUSION_TIME][SCHEMA].update(
             {
                 vol.Required("key"): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=max_button_number)
