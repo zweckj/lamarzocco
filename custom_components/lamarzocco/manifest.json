@@ -25,7 +25,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/rccoleman/lamarzocco/issues",
   "loggers": ["lmcloud"],
-  "requirements": ["lmcloud==0.3.33"],
+  "requirements": ["lmcloud==0.3.34"],
   "ssdp": [],
-  "version": "0.12.1"
+  "version": "0.12.2"
 }
