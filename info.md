@@ -4,4 +4,4 @@
 - [README](https://github.com/zweckj/lamarzocco/blob/master/README.md)
 - [GitHub](https://github.com/zweckj/lamarzocco)
 - [Discord](https://discord.gg/SwpW46rR4p)
-- [lmdirect package](https://github.com/zweckj/lmdirect) used for the local API
+- [lmcloud package](https://github.com/zweckj/lmcloud) used for the local API
