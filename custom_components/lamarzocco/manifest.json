@@ -20,12 +20,12 @@
   "dependencies": [
     "bluetooth_adapters"
   ],
-  "documentation": "https://github.com/rccoleman/lamarzocco",
+  "documentation": "https://github.com/zweckj/lamarzocco",
   "homekit": {},
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/rccoleman/lamarzocco/issues",
+  "issue_tracker": "https://github.com/zweckj/lamarzocco/issues",
   "loggers": ["lmcloud"],
   "requirements": ["lmcloud==0.3.35"],
   "ssdp": [],
-  "version": "0.12.2"
+  "version": "0.12.3"
 }
