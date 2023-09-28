@@ -1,8 +1,8 @@
-# La Marzocco Home Assistant Integration
+# La Marzocco Home Assistant Integration (Gateway v3)
 <!-- [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration) -->
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![issues_badge](https://img.shields.io/github/issues-raw/zweckj/acaia?style=for-the-badge)](https://github.com/patrickhilker/tedee_hass_integration/issues)  
-
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=zweckj&repository=lamarzocco&category=integration)
 ## Overview
 
 This is an integration for recent La Marzocco espresso machines that use WiFi to connect to the cloud and can be controlled via the La Marzocco mobile app. This capability was rolled out in late 2019, and La Marzocco supposedly offers a retrofit kit to add it to earlier models. This repo started as fork for https://github.com/rccoleman/lamarzocco, but with the release of La Marzocco's Gateway V3 in 2023 became the new default.
@@ -28,13 +28,27 @@ This integration currently only supports a single espresso machine. It's possibl
 
 ### HACS
 
-If you've installed [HACS](https://hacs.xyz), this integration is in the default list and you can simply search for "La Marzocco" and install it that way.
+This integration is compatible with [HACS](https://hacs.xyz/), which means that you can easily download and manage updates for it. <br>
+Click the button below to add it to your HACS installation <br>
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=zweckj&repository=lamarzocco&category=integration)
+
+<!-- If you've installed [HACS](https://hacs.xyz), this integration is in the default list and you can simply search for "La Marzocco" and install it that way.
 
 1. Launch the HACS panel from the left sidebar
 2. Click "Integrations`
 3. Search for "La Marzocco" and select it
-4. Click "Install" on card that appears
+4. Click "Install" on card that appears -->
 
+or add the repo to HACS manually:
+
+1. Launch the HACS panel from the left sidebar
+2. Click "Integrations`
+3. Click the three dots in the top right corner
+4. Click "Add custom repository"
+5. Add the link to this repo (`https://github.com/zweckj/lamarzocco`)
+6. Click "Explore & Download Repositories"
+7. Install "La Marzocco"
+   
 ### Manual
 
 If you don't have HACS installed or would prefer to install manually.
