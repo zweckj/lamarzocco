@@ -67,7 +67,7 @@ Add the integration manually.
 3. Search for "La Marzocco" and select it
 4. You'll be presented with a dialog box like this:
 
-![](https://github.com/zweckj/lamarzocco/blob/master/images/Config_Flow.png/Config_Flow.png)
+![Config Flow](https://github.com/zweckj/lamarzocco/blob/main/images/Config_Flow.png))
 
 5. Fill in the info
 6. Hit "Submit"
