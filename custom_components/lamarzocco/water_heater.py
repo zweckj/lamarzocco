@@ -1,89 +1,98 @@
 """Water heater platform for La Marzocco espresso machines."""
 
-import logging
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.water_heater import (
     STATE_ELECTRIC,
     STATE_OFF,
     WaterHeaterEntity,
-    WaterHeaterEntityFeature
+    WaterHeaterEntityFeature,
+    WaterHeaterEntityEntityDescription
 )
 from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature
 
 from .const import (
-    ATTR_MAP_COFFEE,
-    ATTR_MAP_STEAM,
-    COFFEE_BOILER_STATE,
     DOMAIN,
-    ENTITY_ICON,
-    ENTITY_MAP,
-    ENTITY_NAME,
-    ENTITY_TOPERATION_TAG,
-    ENTITY_TEMP_TAG,
-    ENTITY_TSET_TAG,
-    ENTITY_TSTATE_TAG,
-    ENTITY_TYPE,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
-    POWER,
-    STEAM_BOILER_ENABLE,
-    STEAM_BOILER_STATE,
-    TEMP_COFFEE,
-    TSET_COFFEE,
-    TEMP_STEAM,
-    TSET_STEAM,
-    TYPE_COFFEE_TEMP,
-    TYPE_STEAM_TEMP
 )
-from .entity_base import EntityBase
-from .services import async_setup_entity_services, call_service
-
-"""Min/Max coffee and team temps."""
-COFFEE_MIN_TEMP = 85
-COFFEE_MAX_TEMP = 104
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .lm_client import LaMarzoccoClient
+from .services import async_setup_entity_services
 
 STEAM_STEPS = [126, 128, 131]
-
 MODE_ENABLED = "Enabled"
 MODE_DISABLED = "Disabled"
 OPERATION_MODES = [MODE_ENABLED, MODE_DISABLED]
 
-_LOGGER = logging.getLogger(__name__)
 
-ENTITIES = {
-    "coffee": {
-        ENTITY_TEMP_TAG: TEMP_COFFEE,
-        ENTITY_TSET_TAG: TSET_COFFEE,
-        ENTITY_TOPERATION_TAG: POWER,
-        ENTITY_TSTATE_TAG: COFFEE_BOILER_STATE,
-        ENTITY_NAME: "Coffee",
-        ENTITY_MAP: {
-            MODEL_GS3_AV: ATTR_MAP_COFFEE,
-            MODEL_GS3_MP: ATTR_MAP_COFFEE,
-            MODEL_LM: ATTR_MAP_COFFEE,
-            MODEL_LMU: ATTR_MAP_COFFEE
-        },
-        ENTITY_TYPE: TYPE_COFFEE_TEMP,
-        ENTITY_ICON: "mdi:water-boiler",
-    },
-    "steam": {
-        ENTITY_TEMP_TAG: TEMP_STEAM,
-        ENTITY_TSET_TAG: TSET_STEAM,
-        ENTITY_TOPERATION_TAG: STEAM_BOILER_ENABLE,
-        ENTITY_TSTATE_TAG: STEAM_BOILER_STATE,
-        ENTITY_NAME: "Steam",
-        ENTITY_MAP: {
-            MODEL_GS3_AV: ATTR_MAP_STEAM,
-            MODEL_GS3_MP: ATTR_MAP_STEAM,
-            MODEL_LM: ATTR_MAP_COFFEE,
-            MODEL_LMU: ATTR_MAP_STEAM
-        },
-        ENTITY_TYPE: TYPE_STEAM_TEMP,
-        ENTITY_ICON: "mdi:water-boiler",
-    },
-}
+@dataclass
+class LaMarzoccoWaterHeaterEntityDescriptionMixin:
+    """Description of an La Marzocco Water Heater"""
+    state_fn: Callable[[LaMarzoccoClient], bool]
+    current_op_fn: Callable[[LaMarzoccoClient], bool]
+    current_temp_fn: Callable[[LaMarzoccoClient], float | int]
+    target_temp_fn: Callable[[LaMarzoccoClient], float | int]
+    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, None]]
+    set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, None]]
+
+
+@dataclass
+class LaMarzoccoWaterHeaterEntityDescription(
+    WaterHeaterEntityEntityDescription,
+    LaMarzoccoEntityDescription,
+    LaMarzoccoWaterHeaterEntityDescriptionMixin
+):
+    """Description of an La Marzocco Water Heater"""
+
+    def state_fn(self, client):
+        return client.current_status.get(f"{self.key}_boiler_on", False)
+
+    def current_temp_fn(self, client):
+        return client.current_status.get(f"{self.key}_temp", 0)
+
+    def target_tmp_fn(self, client):
+        return client.current_status.get(f"{self.key}_temp_set", 0)
+
+
+ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
+    LaMarzoccoWaterHeaterEntityDescription(
+        key="coffee",
+        name="Coffee",
+        icon="mdi:water-boiler",
+        min_temp=85,
+        max_temp=104,
+        set_temp_fn=lambda client, temp: client.set_coffee_temp(temp),
+        current_op_fn=lambda client: client.current_status.get("power", False),
+        control_fn=lambda client, state: client.set_coffee_boiler_on(state),
+        extra_attributes={
+            MODEL_GS3_AV: None,
+            MODEL_GS3_MP: None,
+            MODEL_LM: None,
+            MODEL_LMU: None
+        }
+    ),
+    LaMarzoccoWaterHeaterEntityDescription(
+        key="steam",
+        name="Steam",
+        icon="mdi:water-boiler",
+        min_temp=126,
+        max_temp=131,
+        set_temp_fn=lambda client, temp: client.set_steam_temp(temp),
+        current_op_fn=lambda client: client.current_status.get("steam_boiler_enable", False),
+        control_fn=lambda client, state: client.set_steam_boiler_on(state),
+        extra_attributes={
+            MODEL_GS3_AV: None,
+            MODEL_GS3_MP: None,
+            MODEL_LM: None,
+            MODEL_LMU: None
+        }
+    ),
+)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -91,20 +100,20 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoWaterHeater(coordinator, water_heater_type, hass, config_entry)
-        for water_heater_type in ENTITIES
-        if coordinator.lm.model_name in ENTITIES[water_heater_type][ENTITY_MAP]
+        LaMarzoccoWaterHeater(coordinator, hass, description)
+        for description in ENTITIES
+        if coordinator.lm.model_name in description.extra_attributes.keys()
     )
 
     await async_setup_entity_services(coordinator.lm)
 
 
-class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
+class LaMarzoccoWaterHeater(LaMarzoccoEntity, WaterHeaterEntity):
     """Water heater representing espresso machine temperature data."""
 
-    def __init__(self, coordinator, water_heater_type, hass, config_entry):
+    def __init__(self, coordinator, hass, entity_description):
         """Initialize water heater."""
-        super().__init__(coordinator, hass, water_heater_type, ENTITIES, ENTITY_TYPE)
+        super().__init__(coordinator, hass, entity_description)
 
     @property
     def supported_features(self):
@@ -124,32 +133,17 @@ class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
     @property
     def state(self):
         """State of the water heater."""
-        is_on = self._lm.current_status.get(
-            self._entities[self._object_id][ENTITY_TSTATE_TAG], False
-        )
-        return STATE_ELECTRIC if is_on else STATE_OFF
+        return STATE_ELECTRIC if self.entity_description.state_fn(self._lm_client) else STATE_OFF
 
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self._lm.current_status.get(
-            self._entities[self._object_id][ENTITY_TEMP_TAG], 0
-        )
+        return self.entity_description.current_temp_fn(self._lm_client)
 
     @property
     def target_temperature(self):
         """Return the target temperature."""
-        return self._lm.current_status.get(
-            self._entities[self._object_id][ENTITY_TSET_TAG], 0
-        )
-
-    @property
-    def min_temp(self):
-        return COFFEE_MIN_TEMP if self._object_id == "coffee" else min(STEAM_STEPS)
-
-    @property
-    def max_temp(self):
-        return COFFEE_MAX_TEMP if self._object_id == "coffee" else max(STEAM_STEPS)
+        return self.entity_description.target_temp_fn(self._lm_client)
 
     @property
     def operation_list(self):
@@ -157,30 +151,19 @@ class LaMarzoccoWaterHeater(EntityBase, WaterHeaterEntity):
 
     @property
     def current_operation(self):
-        is_on = self._lm.current_status.get(
-            self._entities[self._object_id][ENTITY_TOPERATION_TAG], False
-        )
-        return MODE_ENABLED if is_on else MODE_DISABLED
+        return MODE_ENABLED if self.entity_description.current_op_fn(self._lm_client) else MODE_DISABLED
 
     async def async_set_temperature(self, **kwargs):
         """Service call to set the temp of either the coffee or steam boilers."""
         temperature = kwargs.get("temperature", None)
-        func = getattr(self._lm, "set_" + self._object_id + "_temp")
-
-        _LOGGER.debug(f"Setting {self._object_id} to {temperature}")
-        await call_service(func, temp=round(temperature, 1))
+        await self.entity_description.set_temp_fn(self._lm_client, round(temperature, 1))
         await self._update_ha_state()
-        return True
 
     async def async_turn_on(self):
-        _LOGGER.debug(f"Turning {self._object_id} on")
-        func = getattr(self._lm, f"set_{self._entities[self._object_id][ENTITY_TSTATE_TAG]}")
-        await call_service(func, state=True)
+        await self.entity_description.control_fn(self._lm_client, True)
 
     async def async_turn_off(self):
-        _LOGGER.debug(f"Turning {self._object_id} on")
-        func = getattr(self._lm, f"set_{self._entities[self._object_id][ENTITY_TSTATE_TAG]}")
-        await call_service(func, state=False)
+        await self.entity_description.control_fn(self._lm_client, False)
 
     async def async_set_operation_mode(self, operation_mode):
         if operation_mode == MODE_ENABLED:

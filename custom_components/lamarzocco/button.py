@@ -1,39 +1,53 @@
 """Button platform for La Marzocco espresso machines."""
 
-import logging
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from typing import Any
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import (
+    ButtonEntity,
+    ButtonEntityDescription,
+)
 
 from .const import (
     DOMAIN,
-    ENTITY_FUNC,
-    ENTITY_ICON,
-    ENTITY_MAP,
-    ENTITY_NAME,
-    ENTITY_TYPE,
-    TYPE_START_BACKFLUSH,
     MODEL_GS3_AV,
     MODEL_LM,
     MODEL_LMU,
 )
-from .entity_base import EntityBase
-from .services import async_setup_entity_services, call_service
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .lm_client import LaMarzoccoClient
+from .services import async_setup_entity_services
 
-_LOGGER = logging.getLogger(__name__)
 
-ENTITIES = {
-    "start_backflush": {
-        ENTITY_NAME: "Start Backflush",
-        ENTITY_MAP: {
+@dataclass
+class LaMarzoccoButtonEntityDescriptionMixin:
+    """Description of an La Marzocco Button"""
+    press_fn: Callable[[LaMarzoccoClient], Coroutine[Any, Any, None]]
+
+
+@dataclass
+class LaMarzoccoButtonEntityDescription(
+    ButtonEntityDescription,
+    LaMarzoccoEntityDescription,
+    LaMarzoccoButtonEntityDescriptionMixin
+):
+    """Description of an La Marzocco Button"""
+
+
+ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
+    LaMarzoccoButtonEntityDescription(
+        key="start_backflush",
+        name="Start Backflush",
+        icon="mdi:coffee-maker",
+        press_fn=lambda client: client.start_backflush(),
+        extra_attributes={
             MODEL_GS3_AV: None,
             MODEL_LM: None,
             MODEL_LMU: None,
-        },
-        ENTITY_TYPE: TYPE_START_BACKFLUSH,
-        ENTITY_ICON: "mdi:coffee-maker",
-        ENTITY_FUNC: "set_start_backflush",
-    },
-}
+        }
+    ),
+)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -41,24 +55,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoButton(coordinator, button_type, hass)
-        for button_type in ENTITIES
-        if coordinator.lm.model_name in ENTITIES[button_type][ENTITY_MAP]
+        LaMarzoccoButtonEntity(coordinator, hass, description)
+        for description in ENTITIES
+        if coordinator.lm.model_name in description.extra_attributes.keys()
     )
 
     await async_setup_entity_services(coordinator.lm)
 
 
-class LaMarzoccoButton(EntityBase, ButtonEntity):
+class LaMarzoccoButtonEntity(LaMarzoccoEntity, ButtonEntity):
     """Button supporting backflush."""
 
-    def __init__(self, coordinator, button_type, hass):
+    def __init__(self, coordinator, hass, entity_description):
         """Initialise buttons."""
-        super().__init__(coordinator, hass, button_type, ENTITIES, ENTITY_TYPE)
+        super().__init__(coordinator, hass, entity_description)
 
     async def async_press(self, **kwargs) -> None:
         """Press button."""
-        await call_service(
-            getattr(self._lm, self._entities[self._object_id][ENTITY_FUNC])
-        )
+        await self.entity_description.press_fn(self._lm_client)
         await self._update_ha_state()

@@ -3,11 +3,19 @@ import logging
 
 from lmcloud import LMCloud
 
-from .const import *
+from .const import (
+    DEFAULT_PORT_CLOUD,
+    MODEL_GS3_AV,
+    MODEL_GS3_MP,
+    MODEL_LM,
+    MODEL_LMU,
+)
 from homeassistant.components import bluetooth
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_USERNAME
 
 _LOGGER = logging.getLogger(__name__)
+
+MODELS = [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU]
 
 
 class LaMarzoccoClient(LMCloud):
@@ -40,12 +48,12 @@ class LaMarzoccoClient(LMCloud):
     @property
     def machine_name(self) -> str:
         """Return the name of the machine."""
-        return self.machine_info[MACHINE_NAME]
+        return self.machine_info["machine_name"]
 
     @property
     def serial_number(self) -> str:
         """Return serial number."""
-        return self.machine_info[SERIAL_NUMBER]
+        return self.machine_info["serial_number"]
 
     '''
     Initialization
@@ -100,26 +108,8 @@ class LaMarzoccoClient(LMCloud):
         await self.get_hass_bt_client()
         await self.set_steam(enable)
 
-    async def set_preinfusion_enable(self, enable) -> None:
-        await self.set_preinfusion(enable)
-
-    async def set_prebrewing_enable(self, enable) -> None:
-        await self.set_prebrew(enable)
-
     async def set_auto_on_off_global(self, enable) -> None:
         await self.configure_schedule(enable, self.schedule)
-
-    async def set_auto_on_off_enable(self, day_of_week, enable) -> None:
-        await super().set_auto_on_off_enable(day_of_week, enable)
-
-    async def set_auto_on_off_times(self, day_of_week, hour_on, minute_on, hour_off, minute_off) -> None:
-        await self.set_auto_on_off(day_of_week, hour_on, minute_on, hour_off, minute_off)
-
-    async def set_dose(self, key, pulses) -> None:
-        await super().set_dose(key, pulses)
-
-    async def set_dose_hot_water(self, seconds) -> None:
-        await super().set_dose_hot_water(seconds)
 
     async def set_prebrew_times(self, key, seconds_on, seconds_off) -> None:
         await self.configure_prebrew(
@@ -134,9 +124,6 @@ class LaMarzoccoClient(LMCloud):
             prebrewOffTime=seconds * 1000,
             key=key
         )
-
-    async def set_start_backflush(self) -> None:
-        await self.start_backflush()
 
     async def set_coffee_temp(self, temp) -> None:
         await self.get_hass_bt_client()

@@ -10,24 +10,26 @@ from homeassistant.exceptions import HomeAssistantError
 from .const import (
     DAYS,
     DOMAIN,
-    FUNC,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
-    MODELS_SUPPORTED,
-    PLATFORM,
-    SET_AUTO_ON_OFF_ENABLE,
-    SET_AUTO_ON_OFF_TIMES,
-    SET_DOSE,
-    SET_DOSE_HOT_WATER,
-    SCHEMA,
     UPDATE_DELAY,
-    SET_PREBREW_TIMES,
-    SET_PREINFUSION_TIME
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+FUNC = "func"
+MODELS_SUPPORTED = "supported"
+PLATFORM = "platform"
+SCHEMA = "schema"
+SET_PREBREW_TIMES = "set_prebrew_times"
+SET_PREINFUSION_TIME = "set_preinfusion_time"
+SET_DOSE = "set_dose"
+SET_DOSE_HOT_WATER = "set_dose_hot_water"
+SET_AUTO_ON_OFF_ENABLE = "set_auto_on_off_enable"
+SET_AUTO_ON_OFF_TIMES = "set_auto_on_off_times"
+SUPPORTED = "supported"
 
 
 async def call_service(func, *args, **kwargs):
@@ -68,7 +70,7 @@ async def async_setup_services(hass, config_entry):
             f"Setting auto on/off hours for {day_of_week} from {hour_on}:{minute_on} to {hour_off}:{minute_off}"
         )
         await call_service(
-            lm.set_auto_on_off_times,
+            lm.set_auto_on_off,
             day_of_week=day_of_week,
             hour_on=hour_on,
             minute_on=minute_on,

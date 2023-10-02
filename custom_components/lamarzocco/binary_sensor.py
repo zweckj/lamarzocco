@@ -1,65 +1,74 @@
 """Binary Sensor platform for La Marzocco espresso machines."""
 
-import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
+    BinarySensorEntityDescription,
 )
 
 from .const import (
-    ATTR_MAP_BREW_ACTIVE,
-    ATTR_MAP_WATER_RESERVOIR,
     BREW_ACTIVE,
     DOMAIN,
-    ENTITY_CLASS,
-    ENTITY_ICON,
-    ENTITY_MAP,
-    ENTITY_NAME,
-    ENTITY_TAG,
-    ENTITY_TYPE,
     CONF_USE_WEBSOCKET,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
-    TYPE_BREW_ACTIVE,
-    TYPE_WATER_RESERVOIR_CONTACT,
-    WATER_RESERVOIR_CONTACT,
 )
-from .entity_base import EntityBase
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .lm_client import LaMarzoccoClient
 from .services import async_setup_entity_services
 
-_LOGGER = logging.getLogger(__name__)
 
-ENTITIES = {
-    "water_reservoir": {
-        ENTITY_TAG: WATER_RESERVOIR_CONTACT,
-        ENTITY_NAME: "Water Reservoir",
-        ENTITY_MAP: {
-            MODEL_GS3_AV: ATTR_MAP_WATER_RESERVOIR,
-            MODEL_GS3_MP: ATTR_MAP_WATER_RESERVOIR,
-            MODEL_LM: ATTR_MAP_WATER_RESERVOIR,
-            MODEL_LMU: ATTR_MAP_WATER_RESERVOIR
-        },
-        ENTITY_TYPE: TYPE_WATER_RESERVOIR_CONTACT,
-        ENTITY_ICON: "mdi:water-well",
-        ENTITY_CLASS: BinarySensorDeviceClass.PROBLEM,
-    },
-    "brew_active": {
-        ENTITY_TAG: BREW_ACTIVE,
-        ENTITY_NAME: "Brew Active",
-        ENTITY_MAP: {
-            MODEL_GS3_AV: ATTR_MAP_BREW_ACTIVE,
-            MODEL_GS3_MP: ATTR_MAP_BREW_ACTIVE,
-            MODEL_LM: ATTR_MAP_BREW_ACTIVE,
-            MODEL_LMU: ATTR_MAP_BREW_ACTIVE
-        },
-        ENTITY_TYPE: TYPE_BREW_ACTIVE,
-        ENTITY_ICON: "mdi:cup-water",
-        ENTITY_CLASS: BinarySensorDeviceClass.RUNNING,
-    }
-}
+@dataclass
+class LaMarzoccoBinarySensorEntityDescriptionMixin:
+    """Description of an La Marzocco Binary Sensor"""
+    is_on_fn: Callable[[LaMarzoccoClient], bool]
+    is_available_fn: Callable[[LaMarzoccoClient], bool]
+
+
+@dataclass
+class LaMarzoccoBinarySensorEntityDescription(
+    LaMarzoccoEntityDescription,
+    LaMarzoccoBinarySensorEntityDescriptionMixin,
+    BinarySensorEntityDescription,
+):
+    """Description of an La Marzocco Binary Sensor"""
+
+
+ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
+    LaMarzoccoBinarySensorEntityDescription(
+        key="water_reservoir",
+        name="Water Reservoir",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        icon="mdi:water-well",
+        is_on_fn=lambda client: not client.current_status.get("water_reservoir_contact"),
+        is_available_fn=lambda client: client.current_status.get("water_reservoir_contact") is not None,
+        extra_attributes={
+            MODEL_GS3_AV: None,
+            MODEL_GS3_MP: None,
+            MODEL_LM: None,
+            MODEL_LMU: None
+        }
+    ),
+    LaMarzoccoBinarySensorEntityDescription(
+        key=BREW_ACTIVE,
+        name="Brew Active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        icon="mdi:cup-water",
+        is_on_fn=lambda client: client.current_status.get(BREW_ACTIVE),
+        is_available_fn=lambda client: client.current_status.get(BREW_ACTIVE) is not None,
+        extra_attributes={
+            MODEL_GS3_AV: None,
+            MODEL_GS3_MP: None,
+            MODEL_LM: None,
+            MODEL_LMU: None
+        }
+    )
+)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -69,12 +78,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     use_websocket = config_entry.options.get(CONF_USE_WEBSOCKET, True)
 
     entities = []
-    for sensor_type in ENTITIES:
-        if coordinator.lm.model_name in ENTITIES[sensor_type][ENTITY_MAP]:
-            if sensor_type == "brew_active" and not use_websocket:
+    for description in ENTITIES:
+        if coordinator.lm.model_name in description.extra_attributes.keys():
+            if description.key == BREW_ACTIVE and not use_websocket:
                 continue
             entities.append(
-                LaMarzoccoBinarySensor(coordinator, sensor_type, hass, config_entry)
+                LaMarzoccoBinarySensorEntity(coordinator, hass, description)
             )
 
     async_add_entities(entities)
@@ -82,33 +91,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     await async_setup_entity_services(coordinator.lm)
 
 
-class LaMarzoccoBinarySensor(EntityBase, BinarySensorEntity):
+class LaMarzoccoBinarySensorEntity(LaMarzoccoEntity, BinarySensorEntity):
     """Binary Sensor representing espresso machine water reservoir status."""
 
-    def __init__(self, coordinator, sensor_type, hass, config_entry):
+    def __init__(self, coordinator, hass, entity_description):
         """Initialize binary sensors"""
-        super().__init__(coordinator, hass, sensor_type, ENTITIES, ENTITY_TYPE)
+        super().__init__(coordinator, hass, entity_description)
 
     @property
     def available(self):
         """Return if binary sensor is available."""
-        entity = self._entities[self._object_id][ENTITY_TAG]
-        return self._lm.current_status.get(self._get_key(entity)) is not None
+        return self.entity_description.is_available_fn(self._lm_client)
 
     @property
     def is_on(self) -> bool:
         """Return true if the binary sensor is on."""
-        state = self._lm.current_status.get(
-            self._get_key(self._entities[self._object_id][ENTITY_TAG])
-        )
-
-        if self._entity_type == TYPE_WATER_RESERVOIR_CONTACT:
-            # invert state for water reservoir
-            state = not state
-
-        return state
-
-    @property
-    def device_class(self):
-        """Device class for binary sensor"""
-        return self._entities[self._object_id][ENTITY_CLASS]
+        return self.entity_description.is_on_fn(self._lm_client)
