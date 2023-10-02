@@ -10,22 +10,22 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_PASSWORD,
     CONF_PORT,
-    CONF_USERNAME
+    CONF_USERNAME,
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
-from .lm_client import LaMarzoccoClient
 
 from .const import (
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
-    CONF_USE_WEBSOCKET,
-    DOMAIN,
     CONF_DEFAULT_CLIENT_ID,
     CONF_DEFAULT_CLIENT_SECRET,
-    DEFAULT_PORT_CLOUD
+    CONF_USE_WEBSOCKET,
+    DEFAULT_PORT_CLOUD,
+    DOMAIN,
 )
+from .lm_client import LaMarzoccoClient
 
 _LOGGER = logging.getLogger(__name__)
 

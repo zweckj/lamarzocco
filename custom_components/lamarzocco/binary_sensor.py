@@ -11,8 +11,8 @@ from homeassistant.components.binary_sensor import (
 
 from .const import (
     BREW_ACTIVE,
-    DOMAIN,
     CONF_USE_WEBSOCKET,
+    DOMAIN,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,

@@ -5,9 +5,9 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .lm_client import LaMarzoccoClient
 from .const import DOMAIN
 from .coordinator import LmApiCoordinator
+from .lm_client import LaMarzoccoClient
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)

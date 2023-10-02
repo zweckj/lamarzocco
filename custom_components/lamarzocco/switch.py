@@ -3,24 +3,26 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.switch import (
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 
 from .const import (
     DATE_RECEIVED,
     DOMAIN,
+    FRI,
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
     MON,
-    TUE,
-    WED,
-    THU,
-    FRI,
     SAT,
     SUN,
+    THU,
+    TUE,
+    WED,
 )
-
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 from .services import async_setup_entity_services

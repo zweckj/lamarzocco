@@ -1,17 +1,13 @@
 """Base class for the La Marzocco entities."""
 
 import asyncio
-
 from dataclasses import dataclass
 
 from homeassistant.core import callback
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    DOMAIN,
-    UPDATE_DELAY
-)
+from .const import DOMAIN, UPDATE_DELAY
 
 
 @dataclass

@@ -3,24 +3,23 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .const import (
-    DOMAIN,
-    DATE_RECEIVED,
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-)
-from .lm_client import LaMarzoccoClient
-
-from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
-from .services import async_setup_entity_services
-
 from homeassistant.components.sensor import (
     STATE_CLASS_MEASUREMENT,
     SensorEntity,
     SensorEntityDescription,
 )
+
+from .const import (
+    DATE_RECEIVED,
+    DOMAIN,
+    MODEL_GS3_AV,
+    MODEL_GS3_MP,
+    MODEL_LM,
+    MODEL_LMU,
+)
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .lm_client import LaMarzoccoClient
+from .services import async_setup_entity_services
 
 DRINKS = "drinks"
 CONTINUOUS = "continuous"

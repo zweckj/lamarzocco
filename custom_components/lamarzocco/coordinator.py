@@ -3,15 +3,13 @@ from datetime import timedelta
 
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
-                                                      UpdateFailed)
-
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
 
-from .const import (
-    BREW_ACTIVE,
-    CONF_USE_WEBSOCKET
-)
+from .const import BREW_ACTIVE, CONF_USE_WEBSOCKET
 
 SCAN_INTERVAL = timedelta(seconds=30)
 UPDATE_DELAY = 2

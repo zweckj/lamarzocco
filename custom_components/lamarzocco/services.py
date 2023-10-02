@@ -4,8 +4,8 @@ import asyncio
 import logging
 
 import voluptuous as vol
-from homeassistant.helpers import entity_platform
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_platform
 
 from .const import (
     DAYS,

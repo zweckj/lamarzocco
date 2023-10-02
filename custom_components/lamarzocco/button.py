@@ -9,12 +9,7 @@ from homeassistant.components.button import (
     ButtonEntityDescription,
 )
 
-from .const import (
-    DOMAIN,
-    MODEL_GS3_AV,
-    MODEL_LM,
-    MODEL_LMU,
-)
+from .const import DOMAIN, MODEL_GS3_AV, MODEL_LM, MODEL_LMU
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 from .services import async_setup_entity_services

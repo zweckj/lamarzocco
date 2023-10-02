@@ -9,13 +9,7 @@ from homeassistant.components.update import (
     UpdateEntityDescription,
 )
 
-from .const import (
-    DOMAIN,
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-)
+from .const import DOMAIN, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 

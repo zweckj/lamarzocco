@@ -8,18 +8,12 @@ from homeassistant.components.water_heater import (
     STATE_ELECTRIC,
     STATE_OFF,
     WaterHeaterEntity,
+    WaterHeaterEntityEntityDescription,
     WaterHeaterEntityFeature,
-    WaterHeaterEntityEntityDescription
 )
 from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature
 
-from .const import (
-    DOMAIN,
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-)
+from .const import DOMAIN, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 from .services import async_setup_entity_services

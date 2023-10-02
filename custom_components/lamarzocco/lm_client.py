@@ -1,6 +1,8 @@
 
 import logging
 
+from homeassistant.components import bluetooth
+from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_USERNAME
 from lmcloud import LMCloud
 
 from .const import (
@@ -10,8 +12,6 @@ from .const import (
     MODEL_LM,
     MODEL_LMU,
 )
-from homeassistant.components import bluetooth
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_USERNAME
 
 _LOGGER = logging.getLogger(__name__)
 
