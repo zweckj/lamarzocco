@@ -31,12 +31,26 @@ class LaMarzoccoUpdateEntityDescription(
 
 ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
     LaMarzoccoUpdateEntityDescription(
-        key="firmware",
-        name="Firmware",
+        key="machine_firmware",
+        name="Machine Firmware",
         device_class=UpdateDeviceClass.FIRMWARE,
         icon="mdi:cloud-download",
-        current_fw_fn=lambda client: client.firmware_version,
-        latest_fw_fn=lambda client: client.latest_firmware_version,
+        current_fw_fn=lambda client: client._firmware.get("machine_firmware", {}).get("version", "Unknown"),
+        latest_fw_fn=lambda client: client._firmware.get("machine_firmware", {}).get("targetVersion", "Unknown"),
+        extra_attributes={
+            MODEL_GS3_AV: None,
+            MODEL_GS3_MP: None,
+            MODEL_LM: None,
+            MODEL_LMU: None,
+        },
+    ),
+    LaMarzoccoUpdateEntityDescription(
+        key="gateway_firmware",
+        name="Gateway Firmware",
+        device_class=UpdateDeviceClass.FIRMWARE,
+        icon="mdi:cloud-download",
+        current_fw_fn=lambda client: client._firmware.get("gateway_firmware", {}).get("version", "Unknown"),
+        latest_fw_fn=lambda client: client._firmware.get("gateway_firmware", {}).get("targetVersion", "Unknown"),
         extra_attributes={
             MODEL_GS3_AV: None,
             MODEL_GS3_MP: None,
