@@ -14,18 +14,13 @@
             "user": {
                 "data": {
                     "host": "IP Address",
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
                     "password": "Password",
                     "username": "Username"
-                }
-            },
-            "confirm": {
-                "data": {
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
-                    "password": "Password",
-                    "username": "Username"
+                },
+                "data_description": {
+                    "host": "Local IP address of the machine",
+                    "password": "Your password from the La Marzocco app",
+                    "username": "Your username from the La Marzocco app"
                 }
             },
             "reauth_confirm": {
@@ -50,7 +45,10 @@
                     "client_secret": "Client Secret",
                     "password": "Password",
                     "username": "Username",
-                    "use_websocket": "Check to use WebSockets to connect to machine. This will give you access to a sensor indicating an active brew."
+                    "use_websocket": "Use WebSockets to connect to machine"
+                },
+                "data_description": {
+                    "use_websocket": "Check to use WebSockets, this will give you access to a sensor indicating an active brew."
                 }
             }
         }
@@ -153,5 +151,57 @@
             }
         }
     },
-    "title": "La Marzocco"
+    "entity": {
+        "binary_sensor": {
+            "water_reservoir": {
+                "name": "Water Reservoir"
+            },
+            "brew_active": {
+                "name": "Brew Active"
+            }
+        },
+        "button": {
+            "start_backflush": {
+                "name": "Start Backflush"
+            }
+        },
+        "sensor": {
+            "drink_stats": {
+                "name": "Drink Stats"
+            }
+        },
+        "switch": {
+            "main": {
+                "name": "Main"
+            },
+            "auto_on_off": {
+                "name": "Auto On/Off"
+            },
+            "prebrew": {
+                "name": "Prebrew"
+            },
+            "preinfusion": {
+                "name": "Preinfusion"
+            },
+            "steam_boiler_enable": {
+                "name": "Steam Boiler Enable"
+            }
+        },
+        "update": {
+            "machine_firmware": {
+                "name": "Machine Firmware"
+            },
+            "gateway_firmware": {
+                "name": "Gateway Firmware"
+            }
+        },
+        "water_heater": {
+            "coffee_boiler": {
+                "name": "Coffee Boiler"
+            },
+            "steam_boiler": {
+                "name": "Steam Boiler"
+            }
+        }
+    }
 }

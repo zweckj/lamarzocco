@@ -42,7 +42,7 @@ class LaMarzoccoBinarySensorEntityDescription(
 ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
     LaMarzoccoBinarySensorEntityDescription(
         key="water_reservoir",
-        name="Water Reservoir",
+        translation_key="water_reservoir",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:water-well",
         is_on_fn=lambda client: not client.current_status.get("water_reservoir_contact"),
@@ -56,7 +56,7 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
     ),
     LaMarzoccoBinarySensorEntityDescription(
         key=BREW_ACTIVE,
-        name="Brew Active",
+        translation_key=BREW_ACTIVE,
         device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:cup-water",
         is_on_fn=lambda client: client.current_status.get(BREW_ACTIVE),
@@ -67,7 +67,7 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
             MODEL_LM: None,
             MODEL_LMU: None
         }
-    )
+    ),
 )
 
 

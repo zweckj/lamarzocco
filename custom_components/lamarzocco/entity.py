@@ -35,6 +35,7 @@ class LaMarzoccoEntity(CoordinatorEntity):
         self._hass = hass
         self.entity_description = entity_description
         self._lm_client = self.coordinator.data
+        self._attr_has_entity_name = True
 
     @property
     def name(self):

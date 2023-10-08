@@ -18,7 +18,6 @@ from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 from .services import async_setup_entity_services
 
-STEAM_STEPS = [126, 128, 131]
 MODE_ENABLED = "Enabled"
 MODE_DISABLED = "Disabled"
 OPERATION_MODES = [MODE_ENABLED, MODE_DISABLED]
@@ -56,7 +55,7 @@ class LaMarzoccoWaterHeaterEntityDescription(
 ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
     LaMarzoccoWaterHeaterEntityDescription(
         key="coffee",
-        name="Coffee",
+        translation_key="coffee",
         icon="mdi:water-boiler",
         min_temp=85,
         max_temp=104,
@@ -72,7 +71,7 @@ ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
     ),
     LaMarzoccoWaterHeaterEntityDescription(
         key="steam",
-        name="Steam",
+        translation_key="steam",
         icon="mdi:water-boiler",
         min_temp=126,
         max_temp=131,

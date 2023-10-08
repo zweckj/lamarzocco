@@ -33,7 +33,7 @@ class LaMarzoccoButtonEntityDescription(
 ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
     LaMarzoccoButtonEntityDescription(
         key="start_backflush",
-        name="Start Backflush",
+        translation_key="start_backflush",
         icon="mdi:coffee-maker",
         press_fn=lambda client: client.start_backflush(),
         extra_attributes={

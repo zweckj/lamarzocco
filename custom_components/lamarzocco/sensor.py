@@ -64,7 +64,7 @@ class LaMarzoccoSensorEntityDescription(
 ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
     LaMarzoccoSensorEntityDescription(
         key="drink_stats",
-        name="Total Drinks",
+        translation_key="drink_stats",
         icon="mdi:coffee",
         native_unit_of_measurement="drinks",
         device_class=None,
@@ -76,7 +76,7 @@ ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
             MODEL_LM: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
             MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM
         }
-    )
+    ),
 )
 
 

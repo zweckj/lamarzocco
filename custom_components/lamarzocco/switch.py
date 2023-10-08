@@ -122,7 +122,7 @@ class LaMarzoccoSwitchEntityDescription(
 ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
         key="main",
-        name="Main",
+        translation_key="main",
         icon="mdi:coffee-maker",
         control_fn=lambda client, state: client.set_power(state),
         is_on_fn=lambda client: client.current_status["power"],
@@ -135,7 +135,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     ),
     LaMarzoccoSwitchEntityDescription(
         key="auto_on_off",
-        name="Auto On Off",
+        translation_key="auto_on_off",
         icon="mdi:alarm",
         control_fn=lambda client, state: client.set_auto_on_off_global(state),
         is_on_fn=lambda client: client.current_status["global_auto"] == "Enabled",
@@ -148,7 +148,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     ),
     LaMarzoccoSwitchEntityDescription(
         key="prebrew",
-        name="Prebrew",
+        translation_key="prebrew",
         icon="mdi:location-enter",
         control_fn=lambda client, state: client.set_prebrewing_enable(state),
         is_on_fn=lambda client: client.current_status["enable_prebrewing"],
@@ -160,7 +160,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     ),
     LaMarzoccoSwitchEntityDescription(
         key="preinfusion",
-        name="Preinfusion",
+        translation_key="preinfusion",
         icon="mdi:location-enter",
         control_fn=lambda client, state: client.set_preinfusion_enable(state),
         is_on_fn=lambda client: client.current_status["enable_preinfusion"],
@@ -172,7 +172,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     ),
     LaMarzoccoSwitchEntityDescription(
         key="steam_boiler_enable",
-        name="Steam Boiler Enable",
+        translation_key="steam_boiler_enable",
         icon="mdi:water-boiler",
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         is_on_fn=lambda client: client.current_status["steam_boiler_enable"],
