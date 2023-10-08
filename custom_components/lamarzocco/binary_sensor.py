@@ -33,8 +33,8 @@ class LaMarzoccoBinarySensorEntityDescriptionMixin:
 @dataclass
 class LaMarzoccoBinarySensorEntityDescription(
     LaMarzoccoEntityDescription,
-    LaMarzoccoBinarySensorEntityDescriptionMixin,
     BinarySensorEntityDescription,
+    LaMarzoccoBinarySensorEntityDescriptionMixin
 ):
     """Description of an La Marzocco Binary Sensor"""
 

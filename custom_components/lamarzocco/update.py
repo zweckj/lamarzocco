@@ -25,6 +25,7 @@ class LaMarzoccoUpdateEntityDescriptionMixin:
 class LaMarzoccoUpdateEntityDescription(
     UpdateEntityDescription,
     LaMarzoccoEntityDescription,
+    LaMarzoccoUpdateEntityDescriptionMixin
 ):
     """Description of an La Marzocco Switch"""
 
