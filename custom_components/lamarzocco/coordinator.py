@@ -49,7 +49,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
 
             elif self._initialized and not self._websocket_initialized and self._use_websocket:
                 # only initialize websockets after the first update
-                _LOGGER.debug("Initializing WebSockets.")
+                _LOGGER.debug("Initializing WebSockets")
                 self._websocket_task = self.hass.async_create_task(
                     self._lm._lm_local_api.websocket_connect(
                         callback=self._on_data_received,
@@ -62,7 +62,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
 
         except AuthFail as ex:
             msg = "Authentication failed. \
-                            Maybe one of your credential details was invalid or you changed your password."
+                            Maybe one of your credential details was invalid or you changed your password"
             _LOGGER.error(msg)
             _LOGGER.debug(msg, exc_info=True)
             raise ConfigEntryAuthFailed(msg) from ex

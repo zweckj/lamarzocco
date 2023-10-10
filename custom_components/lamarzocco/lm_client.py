@@ -61,7 +61,7 @@ class LaMarzoccoClient(LMCloud):
 
     async def hass_init(self) -> None:
 
-        _LOGGER.debug("Initializing Cloud API.")
+        _LOGGER.debug("Initializing Cloud API")
         await self._init_cloud_api(self._hass_config)
         _LOGGER.debug(f"Model name: {self.model_name}")
 
@@ -71,13 +71,13 @@ class LaMarzoccoClient(LMCloud):
 
         if mac_address is not None and name is not None:
             # coming from discovery
-            _LOGGER.debug("Initializing with known BT device.")
+            _LOGGER.debug("Initializing with known Bluetooth device")
             await self._init_bluetooth_with_known_device(username, mac_address, name)
         else:
             # check if there are any bluetooth adapters to use
             count = bluetooth.async_scanner_count(self.hass, connectable=True)
             if count > 0:
-                _LOGGER.debug("Found bluetooth adapters, initializing with bluetooth.")
+                _LOGGER.debug("Found bluetooth adapters, initializing with Bluetooth")
                 bt_scanner = bluetooth.async_get_scanner(self.hass)
 
                 await self._init_bluetooth(username=username,
@@ -85,12 +85,12 @@ class LaMarzoccoClient(LMCloud):
                                            bluetooth_scanner=bt_scanner)
 
         if self._lm_bluetooth:
-            _LOGGER.debug("Connecting to machine with Bluetooth.")
+            _LOGGER.debug("Connecting to machine with Bluetooth")
             await self.get_hass_bt_client()
 
         ip = self._hass_config.get(CONF_HOST)
         if ip is not None:
-            _LOGGER.debug("Initializing local API.")
+            _LOGGER.debug("Initializing local API")
             await self._init_local_api(
                 ip=self._hass_config.get(CONF_HOST),
                 port=DEFAULT_PORT_CLOUD
@@ -149,11 +149,11 @@ class LaMarzoccoClient(LMCloud):
 
         if ble_device is None:
             if not self._bt_disconnected:
-                _LOGGER.warn("Machine not found in Bluetooth scan, not sending commands through bluetooth.")
+                _LOGGER.warning("Machine not found in Bluetooth scan, not sending commands through bluetooth")
                 self._bt_disconnected = True
         else:
             if self._bt_disconnected:
-                _LOGGER.warn("Machine available again for Bluetooth, sending commands through bluetooth.")
+                _LOGGER.warning("Machine available again for Bluetooth, sending commands through bluetooth")
                 self._bt_disconnected = False
 
         await self._lm_bluetooth.new_bleak_client_from_ble_device(ble_device)
