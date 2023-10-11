@@ -4,6 +4,8 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import LmApiCoordinator
@@ -12,16 +14,17 @@ from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["switch", "binary_sensor", "sensor", "water_heater", "button"]
+PLATFORMS = ["switch", "binary_sensor", "sensor", "water_heater", "button", "update"]
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the La Marzocco component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
-async def async_setup_entry(hass, config_entry):
+async def async_setup_entry(hass, config_entry: ConfigEntry) -> bool:
     """Set up La Marzocco as config entry."""
 
     config_entry.async_on_unload(config_entry.add_update_listener(options_update_listener))
@@ -39,12 +42,12 @@ async def async_setup_entry(hass, config_entry):
     return True
 
 
-async def options_update_listener(hass: HomeAssistant, entry: ConfigEntry):
+async def options_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     coordinator.terminate_websocket()
