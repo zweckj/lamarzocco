@@ -39,11 +39,11 @@ class LmApiCoordinator(DataUpdateCoordinator):
         self._websocket_initialized = False
         self._websocket_task = None
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> LaMarzoccoClient:
         try:
             _LOGGER.debug("Update coordinator: Updating data")
             if not self._initialized:
-                await self._lm.hass_init()
+                await self._lm.connect()
 
             elif self._initialized and not self._websocket_initialized:
                 # only initialize websockets after the first update
@@ -73,7 +73,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
         return self._lm
 
     @callback
-    def _on_data_received(self, property_updated, update):
+    def _on_data_received(self, property_updated: str, value: str | bool | float | int) -> None:
         """Handle data received from websocket."""
 
         if not property_updated or not self._initialized:
@@ -82,10 +82,10 @@ class LmApiCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(
             "Received data from websocket, property updated: %s with value: %s",
             str(property_updated),
-            str(update),
+            str(value),
         )
         if property_updated:
-            self._lm.update_current_status(property_updated, update)
+            self._lm.update_current_status(property_updated, value)
 
         self.data = self._lm
 

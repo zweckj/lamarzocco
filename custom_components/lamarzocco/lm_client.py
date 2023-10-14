@@ -18,15 +18,15 @@ MODELS = [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU]
 class LaMarzoccoClient(LMCloud):
     """Keep data for La Marzocco entities."""
 
-    def __init__(self, hass: HomeAssistant, hass_config) -> None:
+    def __init__(self, hass: HomeAssistant, entry_data: dict[str, Any]) -> None:
         """Initialise the LaMarzocco entity data."""
         super().__init__()
 
-        self._device_version = None
-        self._hass_config = hass_config
-        self.hass = hass
-        self._brew_active = False
-        self._bt_disconnected = False
+        self._device_version: str | None    = None
+        self._entry_data: dict[str, Any]    = entry_data
+        self.hass: HomeAssistant            = hass
+        self._brew_active: bool             = False
+        self._bt_disconnected: bool         = False
 
     @property
     def model_name(self) -> str:
@@ -57,15 +57,15 @@ class LaMarzoccoClient(LMCloud):
         """Return serial number."""
         return self.machine_info["serial_number"]
 
-    async def hass_init(self) -> None:
-        """Initialize the client with the Home Assistant config."""
+    async def connect(self) -> None:
+        """Connect to the machine."""
         _LOGGER.debug("Initializing Cloud API")
-        await self._init_cloud_api(self._hass_config)
+        await self._init_cloud_api(self._entry_data)
         _LOGGER.debug("Model name: %s", self.model_name)
 
-        username = self._hass_config.get(CONF_USERNAME)
-        mac_address = self._hass_config.get(CONF_MAC)
-        name = self._hass_config.get(CONF_NAME)
+        username = self._entry_data.get(CONF_USERNAME)
+        mac_address = self._entry_data.get(CONF_MAC)
+        name = self._entry_data.get(CONF_NAME)
 
         if mac_address is not None and name is not None:
             # coming from discovery
@@ -86,15 +86,15 @@ class LaMarzoccoClient(LMCloud):
             _LOGGER.debug("Connecting to machine with Bluetooth")
             await self.get_hass_bt_client()
 
-        ip = self._hass_config.get(CONF_HOST)
+        ip = self._entry_data.get(CONF_HOST)
         if ip is not None:
             _LOGGER.debug("Initializing local API")
             await self._init_local_api(
-                ip=self._hass_config.get(CONF_HOST), port=DEFAULT_PORT_CLOUD
+                ip=self._entry_data.get(CONF_HOST), port=DEFAULT_PORT_CLOUD
             )
 
     async def try_connect(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Try to connect to the machine."""
+        """Try to connect to the machine, used for validation."""
         self.client = await self._connect(data)
         machine_info = await self._get_machine_info()
         return machine_info
