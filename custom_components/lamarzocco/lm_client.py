@@ -99,38 +99,38 @@ class LaMarzoccoClient(LMCloud):
         machine_info = await self._get_machine_info()
         return machine_info
 
-    async def set_power(self, enabled) -> None:
+    async def set_power(self, enabled: bool) -> None:
         """Set the power state of the machine."""
         await self.get_hass_bt_client()
         await super().set_power(enabled)
 
-    async def set_steam_boiler_enable(self, enable) -> None:
+    async def set_steam_boiler_enable(self, enable: bool) -> None:
         """Set the steam boiler state of the machine."""
         await self.get_hass_bt_client()
         await self.set_steam(enable)
 
-    async def set_auto_on_off_global(self, enable) -> None:
+    async def set_auto_on_off_global(self, enable: bool) -> None:
         """Set the auto on/off state of the machine."""
         await self.configure_schedule(enable, self.schedule)
 
-    async def set_prebrew_times(self, key, seconds_on, seconds_off) -> None:
+    async def set_prebrew_times(self, key: str, seconds_on: float, seconds_off: float) -> None:
         """Set the prebrew times of the machine."""
         await self.configure_prebrew(
             prebrewOnTime=seconds_on * 1000, prebrewOffTime=seconds_off * 1000, key=key
         )
 
-    async def set_preinfusion_time(self, key, seconds) -> None:
+    async def set_preinfusion_time(self, key: str, seconds: float) -> None:
         """Set the preinfusion time of the machine."""
         await self.configure_prebrew(
             prebrewOnTime=0, prebrewOffTime=seconds * 1000, key=key
         )
 
-    async def set_coffee_temp(self, temperature) -> None:
+    async def set_coffee_temp(self, temperature: float) -> None:
         """Set the coffee temperature of the machine."""
         await self.get_hass_bt_client()
         await super().set_coffee_temp(temperature)
 
-    async def set_steam_temp(self, temperature) -> None:
+    async def set_steam_temp(self, temperature: float) -> None:
         """Set the steam temperature of the machine."""
         possible_temps = [126, 128, 131]
         min(possible_temps, key=lambda x: abs(x - temperature))

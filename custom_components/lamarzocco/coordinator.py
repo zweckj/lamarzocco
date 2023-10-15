@@ -20,7 +20,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
     """Class to handle fetching data from the La Marzocco API centrally."""
 
     @property
-    def lm(self):
+    def lm(self) -> LaMarzoccoClient:
         """Return the La Marzocco API object."""
         return self._lm
 
@@ -73,7 +73,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
         return self._lm
 
     @callback
-    def _on_data_received(self, property_updated: str, value: str | bool | float | int) -> None:
+    def _on_data_received(self, property_updated: str, value: str | bool | float) -> None:
         """Handle data received from websocket."""
 
         if not property_updated or not self._initialized:
