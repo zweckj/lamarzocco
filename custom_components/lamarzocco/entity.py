@@ -35,11 +35,7 @@ class LaMarzoccoEntity(CoordinatorEntity):
         self.entity_description = entity_description
         self._lm_client = self.coordinator.data
         self._attr_has_entity_name = True
-
-    @property
-    def name(self):
-        """Return the name of the switch."""
-        return f"{self._lm_client.machine_name} " + self.entity_description.name
+        self._attr_name = None
 
     @property
     def unique_id(self):
