@@ -8,7 +8,7 @@ from homeassistant.components import bluetooth
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
-from .const import DEFAULT_PORT_CLOUD, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
+from .const import DEFAULT_PORT_LOCAL, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class LaMarzoccoClient(LMCloud):
         if ip is not None:
             _LOGGER.debug("Initializing local API")
             await self._init_local_api(
-                ip=self._entry_data.get(CONF_HOST), port=DEFAULT_PORT_CLOUD
+                ip=self._entry_data.get(CONF_HOST), port=DEFAULT_PORT_LOCAL
             )
 
     async def try_connect(self, data: dict[str, Any]) -> dict[str, Any]:

@@ -7,7 +7,7 @@ from homeassistant import config_entries
 from homeassistant.components.lamarzocco.const import (
     DEFAULT_CLIENT_ID,
     DEFAULT_CLIENT_SECRET,
-    DEFAULT_PORT_CLOUD,
+    DEFAULT_PORT_LOCAL,
     DOMAIN,
 )
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
@@ -20,7 +20,7 @@ DEFAULT_CONF = {
     "client_id": DEFAULT_CLIENT_ID,
     "client_secret": DEFAULT_CLIENT_SECRET,
     "machine_name": MACHINE_NAME,
-    "port": DEFAULT_PORT_CLOUD,
+    "port": DEFAULT_PORT_LOCAL,
     "title": MACHINE_NAME,
 }
 

@@ -35,7 +35,6 @@ class LaMarzoccoEntity(CoordinatorEntity):
         self.entity_description = entity_description
         self._lm_client = self.coordinator.data
         self._attr_has_entity_name = True
-        self._attr_name = None
 
     @property
     def unique_id(self):

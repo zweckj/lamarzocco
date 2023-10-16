@@ -10,6 +10,8 @@ from homeassistant import config_entries, core, exceptions
 from homeassistant.components.bluetooth import BluetoothServiceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONF_CLIENT_ID,
+    CONF_CLIENT_SECRET,
     CONF_HOST,
     CONF_MAC,
     CONF_NAME,
@@ -21,11 +23,9 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
-    CONF_CLIENT_ID,
-    CONF_CLIENT_SECRET,
     DEFAULT_CLIENT_ID,
     DEFAULT_CLIENT_SECRET,
-    DEFAULT_PORT_CLOUD,
+    DEFAULT_PORT_LOCAL,
     DOMAIN,
 )
 from .lm_client import LaMarzoccoClient
@@ -106,7 +106,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             data = user_input.copy()
             data |= self._discovered
-            data[CONF_PORT] = DEFAULT_PORT_CLOUD
+            data[CONF_PORT] = DEFAULT_PORT_LOCAL
             data[CONF_CLIENT_ID] = DEFAULT_CLIENT_ID
             data[CONF_CLIENT_SECRET] = DEFAULT_CLIENT_SECRET
 
