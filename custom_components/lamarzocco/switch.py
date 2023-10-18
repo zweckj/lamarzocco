@@ -9,7 +9,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DATE_RECEIVED,
     DOMAIN,
     FRI,
     MODEL_GS3_AV,
@@ -41,7 +40,6 @@ AUTO = "auto"
 TIME = "time"
 
 ATTR_MAP_AUTO_ON_OFF = [
-    DATE_RECEIVED,
     (MON, AUTO),
     (MON, ON, TIME),
     (MON, OFF, TIME),
@@ -71,7 +69,6 @@ PREBREWING = "prebrewing"
 PREINFUSION = "preinfusion"
 
 ATTR_MAP_PREBREW_GS3_AV = [
-    DATE_RECEIVED,
     (PREBREWING, TON, "k1"),
     (PREBREWING, TON, "k2"),
     (PREBREWING, TON, "k3"),
@@ -83,7 +80,6 @@ ATTR_MAP_PREBREW_GS3_AV = [
 ]
 
 ATTR_MAP_PREINFUSION_GS3_AV = [
-    DATE_RECEIVED,
     (PREINFUSION, "k1"),
     (PREINFUSION, "k2"),
     (PREINFUSION, "k3"),
@@ -91,12 +87,10 @@ ATTR_MAP_PREINFUSION_GS3_AV = [
 ]
 
 ATTR_MAP_PREINFUSION_LM = [
-    DATE_RECEIVED,
     (PREINFUSION, "k1"),
 ]
 
 ATTR_MAP_PREBREW_LM = [
-    DATE_RECEIVED,
     (PREBREWING, TON, "k1"),
     (PREBREWING, TOFF, "k1"),
 ]
@@ -123,7 +117,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
         key="main",
         translation_key="main",
-        icon="mdi:coffee-maker",
+        icon="mdi:power",
         control_fn=lambda client, state: client.set_power(state),
         is_on_fn=lambda client: client.current_status["power"],
         extra_attributes={
@@ -149,8 +143,8 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
         key="prebrew",
         translation_key="prebrew",
-        icon="mdi:location-enter",
-        control_fn=lambda client, state: client.set_prebrewing_enable(state),
+        icon="mdi:water",
+        control_fn=lambda client, state: client.set_prebrew(state),
         is_on_fn=lambda client: client.current_status["enable_prebrewing"],
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_PREBREW_GS3_AV,
@@ -161,8 +155,8 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
         key="preinfusion",
         translation_key="preinfusion",
-        icon="mdi:location-enter",
-        control_fn=lambda client, state: client.set_preinfusion_enable(state),
+        icon="mdi:water",
+        control_fn=lambda client, state: client.set_preinfusion(state),
         is_on_fn=lambda client: client.current_status["enable_preinfusion"],
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_PREINFUSION_GS3_AV,
@@ -176,12 +170,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         icon="mdi:water-boiler",
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         is_on_fn=lambda client: client.current_status["steam_boiler_enable"],
-        extra_attributes={
-            MODEL_GS3_AV: None,
-            MODEL_GS3_MP: None,
-            MODEL_LM: None,
-            MODEL_LMU: None,
-        },
+        extra_attributes={},
     ),
 )
 
@@ -197,7 +186,8 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoSwitchEntity(coordinator, hass, description)
         for description in ENTITIES
-        if coordinator.lm.model_name in description.extra_attributes
+        if not description.extra_attributes
+        or coordinator.lm.model_name in description.extra_attributes
     )
 
 

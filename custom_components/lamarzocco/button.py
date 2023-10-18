@@ -34,7 +34,7 @@ ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
     LaMarzoccoButtonEntityDescription(
         key="start_backflush",
         translation_key="start_backflush",
-        icon="mdi:coffee-maker",
+        icon="mdi:water-sync",
         press_fn=lambda client: client.start_backflush(),
         extra_attributes={
             MODEL_GS3_AV: None,
@@ -56,7 +56,8 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoButtonEntity(coordinator, hass, description)
         for description in ENTITIES
-        if coordinator.lm.model_name in description.extra_attributes
+        if not description.extra_attributes
+        or coordinator.lm.model_name in description.extra_attributes
     )
 
 

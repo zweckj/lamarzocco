@@ -1,4 +1,5 @@
 """La Marzocco Cloud API client."""
+from collections.abc import Mapping
 import logging
 from typing import Any
 
@@ -18,15 +19,15 @@ MODELS = [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU]
 class LaMarzoccoClient(LMCloud):
     """Keep data for La Marzocco entities."""
 
-    def __init__(self, hass: HomeAssistant, entry_data: dict[str, Any]) -> None:
+    def __init__(self, hass: HomeAssistant, entry_data: Mapping[str, Any]) -> None:
         """Initialise the LaMarzocco entity data."""
         super().__init__()
 
-        self._device_version: str | None    = None
-        self._entry_data: dict[str, Any]    = entry_data
-        self.hass: HomeAssistant            = hass
-        self._brew_active: bool             = False
-        self._bt_disconnected: bool         = False
+        self._device_version: str | None = None
+        self._entry_data = entry_data
+        self.hass = hass
+        self._brew_active = False
+        self._bt_disconnected = False
 
     @property
     def model_name(self) -> str:
@@ -113,7 +114,9 @@ class LaMarzoccoClient(LMCloud):
         """Set the auto on/off state of the machine."""
         await self.configure_schedule(enable, self.schedule)
 
-    async def set_prebrew_times(self, key: str, seconds_on: float, seconds_off: float) -> None:
+    async def set_prebrew_times(
+        self, key: str, seconds_on: float, seconds_off: float
+    ) -> None:
         """Set the prebrew times of the machine."""
         await self.configure_prebrew(
             prebrewOnTime=seconds_on * 1000, prebrewOffTime=seconds_off * 1000, key=key

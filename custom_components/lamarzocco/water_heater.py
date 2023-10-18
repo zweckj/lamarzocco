@@ -16,7 +16,7 @@ from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
+from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
@@ -47,42 +47,32 @@ class LaMarzoccoWaterHeaterEntityDescription(
 
 ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
     LaMarzoccoWaterHeaterEntityDescription(
-        key="coffee",
-        translation_key="coffee",
-        icon="mdi:water-boiler",
+        key="coffee_boiler",
+        translation_key="coffee_boiler",
+        icon="mdi:coffee-maker",
         min_temp=85,
         max_temp=104,
         set_temp_fn=lambda client, temp: client.set_coffee_temp(temp),
         current_op_fn=lambda client: client.current_status.get("power", False),
-        control_fn=lambda client, state: client.set_coffee_boiler_on(state),
+        control_fn=lambda client, state: client.set_power(state),
         current_temp_fn=lambda client: client.current_status.get("coffee_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("coffee_temp_set", 0),
-        extra_attributes={
-            MODEL_GS3_AV: None,
-            MODEL_GS3_MP: None,
-            MODEL_LM: None,
-            MODEL_LMU: None,
-        },
+        extra_attributes={},
     ),
     LaMarzoccoWaterHeaterEntityDescription(
-        key="steam",
-        translation_key="steam",
-        icon="mdi:water-boiler",
+        key="steam_boiler",
+        translation_key="steam_boiler",
+        icon="mdi:kettle-steam",
         min_temp=126,
         max_temp=131,
         set_temp_fn=lambda client, temp: client.set_steam_temp(temp),
         current_op_fn=lambda client: client.current_status.get(
             "steam_boiler_enable", False
         ),
-        control_fn=lambda client, state: client.set_steam_boiler_on(state),
+        control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         current_temp_fn=lambda client: client.current_status.get("steam_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("steam_temp_set", 0),
-        extra_attributes={
-            MODEL_GS3_AV: None,
-            MODEL_GS3_MP: None,
-            MODEL_LM: None,
-            MODEL_LMU: None,
-        },
+        extra_attributes={},
     ),
 )
 
@@ -98,7 +88,8 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoWaterHeater(coordinator, hass, description)
         for description in ENTITIES
-        if coordinator.lm.model_name in description.extra_attributes
+        if not description.extra_attributes
+        or coordinator.lm.model_name in description.extra_attributes
     )
 
 

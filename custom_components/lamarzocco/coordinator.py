@@ -1,13 +1,16 @@
 """Coordinator for La Marzocco API."""
+from asyncio import Task
 from datetime import timedelta
 import logging
 
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .const import DOMAIN
 from .lm_client import LaMarzoccoClient
 
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -24,20 +27,13 @@ class LmApiCoordinator(DataUpdateCoordinator):
         """Return the La Marzocco API object."""
         return self._lm
 
-    def __init__(self, hass: HomeAssistant, lm: LaMarzoccoClient) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            # Name of the data. For logging purposes.
-            name="La Marzocco API coordinator",
-            # Polling interval. Will only be polled if there are subscribers.
-            update_interval=SCAN_INTERVAL,
-        )
-        self._lm = lm
+        self._lm = LaMarzoccoClient(hass, entry.data)
         self._initialized = False
         self._websocket_initialized = False
-        self._websocket_task = None
+        self._websocket_task: Task | None = None
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
     async def _async_update_data(self) -> LaMarzoccoClient:
         try:
@@ -60,11 +56,9 @@ class LmApiCoordinator(DataUpdateCoordinator):
         except AuthFail as ex:
             msg = "Authentication failed. \
                             Maybe one of your credential details was invalid or you changed your password."
-            _LOGGER.error(msg)
             _LOGGER.debug(msg, exc_info=True)
             raise ConfigEntryAuthFailed(msg) from ex
         except (RequestNotSuccessful, Exception) as ex:
-            _LOGGER.error(ex)
             _LOGGER.debug(ex, exc_info=True)
             raise UpdateFailed("Querying API failed. Error: %s" % ex) from ex
 
@@ -73,7 +67,9 @@ class LmApiCoordinator(DataUpdateCoordinator):
         return self._lm
 
     @callback
-    def _on_data_received(self, property_updated: str, value: str | bool | float) -> None:
+    def _on_data_received(
+        self, property_updated: str, value: str | bool | float
+    ) -> None:
         """Handle data received from websocket."""
 
         if not property_updated or not self._initialized:
