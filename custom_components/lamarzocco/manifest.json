@@ -23,7 +23,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/zweckj/lamarzocco/issues",
   "loggers": ["lmcloud"],
-  "requirements": ["lmcloud==0.3.36b3"],
+  "requirements": ["lmcloud==0.3.36"],
   "ssdp": [],
-  "version": "0.12.3"
+  "version": "0.12.4"
 }
