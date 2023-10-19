@@ -1,97 +1,111 @@
 """Sensor platform for La Marzocco espresso machines."""
 
-import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 
-from .const import (
-    ATTR_MAP_DRINK_STATS_GS3_AV,
-    ATTR_MAP_DRINK_STATS_GS3_MP_LM,
-    DOMAIN,
-    DRINKS,
-    ENTITY_CLASS,
-    ENTITY_ICON,
-    ENTITY_MAP,
-    ENTITY_NAME,
-    ENTITY_TAG,
-    ENTITY_TYPE,
-    ENTITY_UNITS,
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-    TOTAL_FLUSHING,
-    TYPE_DRINK_STATS,
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity_base import EntityBase
-from .services import async_setup_entity_services
+from .const import DOMAIN, MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .lm_client import LaMarzoccoClient
 
-from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT, SensorEntity
+DRINKS = "drinks"
+CONTINUOUS = "continuous"
+TOTAL_COFFEE = "total_coffee"
+TOTAL_FLUSHING = "total_flushing"
 
-_LOGGER = logging.getLogger(__name__)
+ATTR_MAP_DRINK_STATS_GS3_AV = [
+    (DRINKS, "k1"),
+    (DRINKS, "k2"),
+    (DRINKS, "k3"),
+    (DRINKS, "k4"),
+    CONTINUOUS,
+    TOTAL_FLUSHING,
+    TOTAL_COFFEE,
+]
 
-ENTITIES = {
-    "drink_stats": {
-        ENTITY_TAG: [
-            (DRINKS, "k1"),
-            TOTAL_FLUSHING
-        ],
-        ENTITY_NAME: "Total Drinks",
-        ENTITY_MAP: {
+ATTR_MAP_DRINK_STATS_GS3_MP_LM = [
+    (DRINKS, "k1"),
+    TOTAL_FLUSHING,
+    TOTAL_COFFEE,
+]
+
+
+@dataclass
+class LaMarzoccoSensorEntityDescriptionMixin:
+    """Description of an La Marzocco Sensor."""
+
+    available_fn: Callable[[LaMarzoccoClient], bool]
+    value_fn: Callable[[LaMarzoccoClient], float | int]
+
+
+@dataclass
+class LaMarzoccoSensorEntityDescription(
+    SensorEntityDescription,
+    LaMarzoccoEntityDescription,
+    LaMarzoccoSensorEntityDescriptionMixin,
+):
+    """Description of an La Marzocco Sensor."""
+
+
+ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
+    LaMarzoccoSensorEntityDescription(
+        key="drink_stats",
+        translation_key="drink_stats",
+        icon="mdi:chart-line",
+        native_unit_of_measurement="drinks",
+        state_class=SensorStateClass.MEASUREMENT,
+        available_fn=lambda client: all(
+            client.current_status.get(p) is not None
+            for p in ("drinks_k1", "total_flushing")
+        ),
+        value_fn=lambda client: sum(
+            client.current_status.get(p, 0) for p in ("drinks_k1", "total_flushing")
+        ),
+        extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_DRINK_STATS_GS3_AV,
             MODEL_GS3_MP: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
             MODEL_LM: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
-            MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM
+            MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
         },
-        ENTITY_TYPE: TYPE_DRINK_STATS,
-        ENTITY_ICON: "mdi:coffee",
-        ENTITY_CLASS: None,
-        ENTITY_UNITS: "drinks",
-    },
-}
+    ),
+)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up sensor entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoSensor(coordinator, sensor_type, hass, config_entry)
-        for sensor_type in ENTITIES
-        if coordinator.lm.model_name in ENTITIES[sensor_type][ENTITY_MAP]
+        LaMarzoccoSensorEntity(coordinator, hass, description)
+        for description in ENTITIES
+        if not description.extra_attributes
+        or coordinator.lm.model_name in description.extra_attributes
     )
 
-    await async_setup_entity_services(coordinator.lm)
 
-
-class LaMarzoccoSensor(EntityBase, SensorEntity):
+class LaMarzoccoSensorEntity(LaMarzoccoEntity, SensorEntity):
     """Sensor representing espresso machine temperature data."""
 
-    def __init__(self, coordinator, sensor_type, hass, config_entry):
-        """Initialize sensors"""
-        super().__init__(coordinator, hass, sensor_type, ENTITIES, ENTITY_TYPE)
+    entity_description: LaMarzoccoSensorEntityDescription
 
     @property
-    def native_unit_of_measurement(self) -> str | None:
-        return self._entities[self._object_id][ENTITY_UNITS]
-
-    @property
-    def device_class(self) -> str | None:
-        return self._entities[self._object_id][ENTITY_CLASS]
-
-    @property
-    def state_class(self) -> str | None:
-        return STATE_CLASS_MEASUREMENT
-
-    @property
-    def available(self):
+    def available(self) -> bool:
         """Return if sensor is available."""
-        return all(
-            self._lm.current_status.get(self._get_key(x)) is not None
-            for x in self._entities[self._object_id][ENTITY_TAG]
-        )
+        return self.entity_description.available_fn(self._lm_client)
 
     @property
-    def native_value(self):
+    def native_value(self) -> int | float:
         """State of the sensor."""
-        entities = self._entities[self._object_id][ENTITY_TAG]
-        return sum([self._lm.current_status.get(self._get_key(x), 0) for x in entities])
+        return self.entity_description.value_fn(self._lm_client)

@@ -1,17 +1,17 @@
-import logging
+"""Coordinator for La Marzocco API."""
+from asyncio import Task
 from datetime import timedelta
-
-from homeassistant.core import callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
-                                                      UpdateFailed)
+import logging
 
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
 
-from .const import (
-    BREW_ACTIVE,
-    CONF_USE_WEBSOCKET
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .const import DOMAIN
+from .lm_client import LaMarzoccoClient
 
 SCAN_INTERVAL = timedelta(seconds=30)
 UPDATE_DELAY = 2
@@ -20,42 +20,33 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class LmApiCoordinator(DataUpdateCoordinator):
-    """Class to handle fetching data from the La Marzocco API centrally"""
+    """Class to handle fetching data from the La Marzocco API centrally."""
 
     @property
-    def lm(self):
+    def lm(self) -> LaMarzoccoClient:
+        """Return the La Marzocco API object."""
         return self._lm
 
-    def __init__(self, hass, config_entry, lm):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            # Name of the data. For logging purposes.
-            name="La Marzocco API coordinator",
-            # Polling interval. Will only be polled if there are subscribers.
-            update_interval=SCAN_INTERVAL
-        )
-        self._lm = lm
+        self._lm = LaMarzoccoClient(hass, entry.data)
         self._initialized = False
         self._websocket_initialized = False
-        self._websocket_task = None
-        self._config_entry = config_entry
-        self._use_websocket = self._config_entry.options.get(CONF_USE_WEBSOCKET, True)
+        self._websocket_task: Task | None = None
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> LaMarzoccoClient:
         try:
             _LOGGER.debug("Update coordinator: Updating data")
             if not self._initialized:
-                await self._lm.hass_init()
+                await self._lm.connect()
 
-            elif self._initialized and not self._websocket_initialized and self._use_websocket:
+            elif self._initialized and not self._websocket_initialized:
                 # only initialize websockets after the first update
-                _LOGGER.debug("Initializing WebSockets.")
+                _LOGGER.debug("Initializing WebSockets")
                 self._websocket_task = self.hass.async_create_task(
-                    self._lm._lm_local_api.websocket_connect(
-                        callback=self._on_data_received,
-                        use_sigterm_handler=False
+                    self._lm.websocket_connect(
+                        callback=self._on_data_received, use_sigterm_handler=False
                     )
                 )
                 self._websocket_initialized = True
@@ -65,31 +56,32 @@ class LmApiCoordinator(DataUpdateCoordinator):
         except AuthFail as ex:
             msg = "Authentication failed. \
                             Maybe one of your credential details was invalid or you changed your password."
-            _LOGGER.error(msg)
             _LOGGER.debug(msg, exc_info=True)
             raise ConfigEntryAuthFailed(msg) from ex
         except (RequestNotSuccessful, Exception) as ex:
-            _LOGGER.error(ex)
             _LOGGER.debug(ex, exc_info=True)
-            raise UpdateFailed("Querying API failed. Error: %s", ex) from ex
+            raise UpdateFailed("Querying API failed. Error: %s" % ex) from ex
 
         _LOGGER.debug("Current status: %s", str(self._lm.current_status))
         self._initialized = True
         return self._lm
 
     @callback
-    def _on_data_received(self, property_updated, update):
-        """ callback which gets called whenever the websocket receives data """
+    def _on_data_received(
+        self, property_updated: str, value: str | bool | float
+    ) -> None:
+        """Handle data received from websocket."""
 
         if not property_updated or not self._initialized:
             return
 
-        _LOGGER.debug("Received data from websocket, property updated: %s with value: %s", str(property_updated), str(update))
+        _LOGGER.debug(
+            "Received data from websocket, property updated: %s with value: %s",
+            str(property_updated),
+            str(value),
+        )
         if property_updated:
-            if property_updated != BREW_ACTIVE:
-                self._lm._current_status[property_updated] = update
-            else:
-                self._lm._brew_active = update
+            self._lm.update_current_status(property_updated, value)
 
         self.data = self._lm
 
@@ -97,7 +89,7 @@ class LmApiCoordinator(DataUpdateCoordinator):
 
     def terminate_websocket(self):
         """Terminate the websocket connection."""
-        self._lm._lm_local_api._terminating = True
+        self._lm.websocket_terminating = True
         if self._websocket_task:
             self._websocket_task.cancel()
             self._websocket_task = None

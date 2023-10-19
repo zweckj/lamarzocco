@@ -1,4 +1,2 @@
-pytest_homeassistant_custom_component==0.4.12
-
-# lamarzocco requirements (copied from custom_components/lamarzocco/manifest.json)
-lmdirect==0.8.0
+pytest-homeassistant-custom-component==0.13.57 
+pytest-asyncio

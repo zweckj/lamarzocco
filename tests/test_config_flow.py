@@ -1,296 +1,224 @@
-"""Tests for the La Marzocco config flow."""
-from unittest import mock
-from unittest.mock import patch
+"""Test the La Marzocco config flow."""
+from unittest.mock import MagicMock
 
-import lmdirect
-from homeassistant import core, data_entry_flow
-from homeassistant.const import (
-    CONF_CLIENT_ID,
-    CONF_CLIENT_SECRET,
-    CONF_HOST,
-    CONF_PASSWORD,
-    CONF_PORT,
-    CONF_USERNAME,
+from lmcloud.exceptions import AuthFail, RequestNotSuccessful
+
+from homeassistant import config_entries
+from homeassistant.components.lamarzocco.const import DOMAIN
+from homeassistant.config_entries import SOURCE_REAUTH
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
+
+from . import (
+    DEFAULT_CONF,
+    DISCOVERED_INFO,
+    LM_SERVICE_INFO,
+    LOGIN_INFO,
+    MACHINE_NAME,
+    USER_INPUT,
+    WRONG_LOGIN_INFO,
 )
 
-from custom_components.lamarzocco import config_flow
-from custom_components.lamarzocco.config_flow import InvalidAuth, validate_input
-from custom_components.lamarzocco.const import (
-    CONF_MACHINE_NAME,
-    CONF_MODEL_NAME,
-    CONF_SERIAL_NUMBER,
-    DOMAIN,
-)
+from tests.common import MockConfigEntry
 
 
-@patch("custom_components.lamarzocco.api.LaMarzocco.connect")
-@patch.object(lmdirect.LMDirect, "_send_msg", autospec=True)
-async def test_validate_input(
-    mock_send_msg, mock_connect, hass, enable_custom_integrations
-):
-    """Test the validate_input function with sample data."""
-    data = {
-        "title": "buzz",
-        "host": "1.2.3.4",
-        "port": 1774,
-        "machine_name": "machine_name",
-        "serial_number": "1234567890",
-        "client_id": "aabbcc",
-        "client_secret": "bbccdd",
-        "username": "username",
-        "password": "password",
-        "model_name": "model_name",
-    }
-    mock_connect.return_value = data
-    result = await validate_input(hass, data)
-    assert result == data
+async def test_show_config_form(hass: HomeAssistant) -> None:
+    """Test if initial configuration form is shown."""
 
-
-async def test_flow_user_init(hass, enable_custom_integrations):
-    """Test the initialization of the form in the first step of the user config flow."""
-    data = {
-        "title": "buzz",
-    }
-    with patch(
-        "custom_components.lamarzocco.config_flow.validate_input"
-    ) as mock_validate_input:
-        machine_info = mock_validate_input.return_value = data
-        result = await hass.config_entries.flow.async_init(
-            config_flow.DOMAIN, context={"source": "user"}
-        )
-    expected = {
-        "data_schema": config_flow.STEP_USER_DATA_SCHEMA,
-        "description_placeholders": None,
-        "errors": {},
-        "flow_id": mock.ANY,
-        "handler": "lamarzocco",
-        "last_step": None,
-        "step_id": "user",
-        "type": "form",
-        "last_step": None
-    }
-    assert expected == result
-    assert data == machine_info
-
-
-async def test_flow_zeroconf_init(hass, enable_custom_integrations):
-    """Test the initialization of the form in the first step of the zeroconf config flow."""
-    data = {
-        "title": "buzz",
-    }
-    with patch(
-        "custom_components.lamarzocco.config_flow.validate_input"
-    ) as mock_validate_input:
-        machine_info = mock_validate_input.return_value = data
-        result = await hass.config_entries.flow.async_init(
-            config_flow.DOMAIN,
-            context={"source": "zeroconf"},
-            data={
-                "host": bytes("1.2.3.4", "utf-8"),
-                "port": 1774,
-                "properties": {
-                    "_raw": {
-                        "type": bytes("machine_type", "utf8"),
-                        "serial_number": bytes("aabbccdd", "utf8"),
-                        "name": bytes("buzz", "utf8"),
-                    }
-                },
-            },
-        )
-    expected = {
-        "data_schema": config_flow.STEP_DISCOVERY_DATA_SCHEMA,
-        "description_placeholders": None,
-        "errors": {},
-        "flow_id": mock.ANY,
-        "handler": "lamarzocco",
-        "last_step": None,
-        "step_id": "confirm",
-        "type": "form",
-        "last_step": None
-    }
-    assert expected == result
-    assert data == machine_info
-
-
-async def mock_func_validate_input(hass: core.HomeAssistant, data):
-    """Validate the user input allows us to connect."""
-    data = {
-        "title": "buzz",
-        CONF_HOST: "1.2.3.4",
-        CONF_PORT: 1774,
-        CONF_CLIENT_ID: "aabbcc",
-        CONF_CLIENT_SECRET: "bbccdd",
-        CONF_USERNAME: "username",
-        CONF_PASSWORD: "password",
-        CONF_SERIAL_NUMBER: "1234567890",
-        CONF_MACHINE_NAME: "machine_name",
-        CONF_MODEL_NAME: "model_name",
-    }
-
-    return data
-
-
-@patch(
-    "custom_components.lamarzocco.config_flow.validate_input", mock_func_validate_input
-)
-@patch("custom_components.lamarzocco.LaMarzocco.request_status")
-async def test_user_flow_works(mock_request_status, hass, enable_custom_integrations):
-    """Test that the user config flow works."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    result = await hass.config_entries.flow.async_configure(
+
+async def test_form(hass: HomeAssistant, mock_lamarzocco: MagicMock) -> None:
+    """Test we get the form."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {}
+
+    result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={
-            CONF_HOST: "1.2.3.4",
-            CONF_CLIENT_ID: "aabbcc",
-            CONF_CLIENT_SECRET: "bbccdd",
-            CONF_USERNAME: "username",
-            CONF_PASSWORD: "password",
-        },
+        USER_INPUT,
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+
+    assert result2["title"] == MACHINE_NAME
+    assert result2["data"] == USER_INPUT | DEFAULT_CONF
+
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
+
+    # now test for unique id abort
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {}
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        USER_INPUT,
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] == FlowResultType.ABORT
+    assert result2["reason"] == "already_configured"
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 2
+
+
+async def test_form_invalid_auth(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test invalid auth error."""
+
+    mock_lamarzocco.try_connect.side_effect = AuthFail("")
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == "buzz"
-    assert result["data"] == {
-        "title": "buzz",
-        CONF_HOST: "1.2.3.4",
-        CONF_PORT: 1774,
-        CONF_CLIENT_ID: "aabbcc",
-        CONF_CLIENT_SECRET: "bbccdd",
-        CONF_USERNAME: "username",
-        CONF_PASSWORD: "password",
-        CONF_SERIAL_NUMBER: "1234567890",
-        CONF_MACHINE_NAME: "machine_name",
-        CONF_MODEL_NAME: "model_name",
-    }
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        USER_INPUT,
+    )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "invalid_auth"}
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
 
 
-@patch(
-    "custom_components.lamarzocco.config_flow.validate_input", mock_func_validate_input
-)
-@patch("custom_components.lamarzocco.LaMarzocco.request_status")
-async def test_zeroconf_flow_works(
-    mock_request_status, hass, enable_custom_integrations
-):
-    """Test zeroconf discovery and config flow."""
+async def test_form_cannot_connect(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test cannot connect error."""
+
+    mock_lamarzocco.try_connect.side_effect = RequestNotSuccessful("")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        USER_INPUT,
+    )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
+
+
+async def test_bluetooth_discovery(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test bluetooth discovery."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": "zeroconf"},
-        data={
-            "host": bytes("1.2.3.4", "utf-8"),
-            "port": 1774,
-            "properties": {
-                "_raw": {
-                    "type": bytes("machine_type", "utf8"),
-                    "serial_number": bytes("aabbccdd", "utf8"),
-                    "name": bytes("buzz", "utf8"),
-                }
-            },
-        },
+        context={"source": config_entries.SOURCE_BLUETOOTH},
+        data=LM_SERVICE_INFO,
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "confirm"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        user_input={
-            CONF_CLIENT_ID: "aabbcc",
-            CONF_CLIENT_SECRET: "bbccdd",
-            CONF_USERNAME: "username",
-            CONF_PASSWORD: "password",
-        },
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == "buzz"
-    assert result["data"] == {
-        "title": "buzz",
-        CONF_HOST: "1.2.3.4",
-        CONF_PORT: 1774,
-        CONF_CLIENT_ID: "aabbcc",
-        CONF_CLIENT_SECRET: "bbccdd",
-        CONF_USERNAME: "username",
-        CONF_PASSWORD: "password",
-        CONF_SERIAL_NUMBER: "1234567890",
-        CONF_MACHINE_NAME: "machine_name",
-        CONF_MODEL_NAME: "model_name",
-    }
-
-
-@patch(
-    "custom_components.lamarzocco.config_flow.validate_input",
-    side_effect=InvalidAuth,
-)
-@patch("custom_components.lamarzocco.LaMarzocco.request_status")
-async def test_user_auth_fail(
-    mock_request_status, mock_validate_input, hass, enable_custom_integrations
-):
-    """Test that the user config flow fails with invalid auth."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    result = await hass.config_entries.flow.async_configure(
+    result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={
-            CONF_HOST: "1.2.3.4",
-            CONF_CLIENT_ID: "aabbcc",
-            CONF_CLIENT_SECRET: "bbccdd",
-            CONF_USERNAME: "username",
-            CONF_PASSWORD: "password",
-        },
+        USER_INPUT,
     )
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert result2["data"] == USER_INPUT | DEFAULT_CONF | DISCOVERED_INFO
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
 
-    print(result["errors"])
-    assert result["errors"]["base"] == "invalid_auth"
 
+async def test_show_reauth(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test that the reauth form shows."""
 
-@patch(
-    "custom_components.lamarzocco.config_flow.validate_input",
-    side_effect=InvalidAuth,
-)
-@patch("custom_components.lamarzocco.LaMarzocco.request_status")
-async def test_zeroconf_auth_fail(
-    mock_request_status, mock_validate_input, hass, enable_custom_integrations
-):
-    """Test that the zeroconf config flow fails with invalid auth."""
+    mock_config_entry.add_to_hass(hass)
+
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": "zeroconf"},
-        data={
-            "host": bytes("1.2.3.4", "utf-8"),
-            "port": bytes("1774", "utf-8"),
-            "properties": {
-                "_raw": {
-                    "type": bytes("machine_type", "utf8"),
-                    "serial_number": bytes("aabbccdd", "utf8"),
-                    "name": bytes("buzz", "utf8"),
-                }
-            },
+        context={
+            "source": SOURCE_REAUTH,
+            "unique_id": mock_config_entry.unique_id,
+            "entry_id": mock_config_entry.entry_id,
         },
+        data=mock_config_entry.data,
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+
+
+async def test_reauth_flow(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test that the reauth flow."""
+
+    mock_config_entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_REAUTH,
+            "unique_id": mock_config_entry.unique_id,
+            "entry_id": mock_config_entry.entry_id,
+        },
+        data=mock_config_entry.data,
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "confirm"
-
-    result = await hass.config_entries.flow.async_configure(
+    result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={
-            "client_id": "aabbcc",
-            "client_secret": "bbccdd",
-            "username": "username",
-            "password": "password",
-        },
+        LOGIN_INFO,
     )
 
-    print(result["errors"])
-    assert result["errors"]["base"] == "invalid_auth"
+    assert result2["type"] == FlowResultType.ABORT
+    await hass.async_block_till_done()
+    assert result2["reason"] == "reauth_successful"
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
+
+
+async def test_reauth_errors(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test the reauth flow errors."""
+    mock_config_entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_REAUTH,
+            "unique_id": mock_config_entry.unique_id,
+            "entry_id": mock_config_entry.entry_id,
+        },
+        data=mock_config_entry.data,
+    )
+
+    mock_lamarzocco.try_connect.side_effect = AuthFail("")
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        WRONG_LOGIN_INFO,
+    )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "invalid_auth"}
+
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 1
+
+    mock_lamarzocco.try_connect.side_effect = RequestNotSuccessful("")
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        LOGIN_INFO,
+    )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+    assert len(mock_lamarzocco.try_connect.mock_calls) == 2
