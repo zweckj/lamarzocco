@@ -1,114 +1,147 @@
 {
     "config": {
-        "flow_title": "La Marzocco Espresso {host}",
         "abort": {
-            "single_instance_allowed": "Le dispositif est déjà configuré. Une seule instance est autorisée.",
-            "reauth_successful": "Les droits ont été mis à jour correctement."
+            "already_configured": "Machine déjà configurée",
+            "reauth_successful": "Re-authentificacation réussie"
         },
         "error": {
-            "cannot_connect": "Impossible de se connecter",
-            "invalid_auth": "Erreur d'authentification",
+            "cannot_connect": "Erreur de connexion",
+            "invalid_auth": "Authentification invalide",
             "unknown": "Erreur inattendue"
         },
+        "flow_title": "La Marzocco Espresso {host}",
         "step": {
+            "reauth_confirm": {
+                "data": {
+                    "client_id": "ID Client",
+                    "client_secret": "Clé Client",
+                    "password": "Mot de passe",
+                    "username": "Nom d'utilisateur"
+                },
+                "description": "Un ou plus de vos éléments d'identité fournis sont invalides.",
+                "title": "Infornations d'identité fournies invalides",
+           },
             "user": {
                 "data": {
                     "host": "Adresse IP",
-                    "client_id": "ID Client",
-                    "client_secret": "Clé Client",
                     "password": "Mot de passe",
                     "username": "Nom d'utilisateur"
-                }
-            },
-            "confirm": {
-                "data": {
-                    "client_id": "ID Client",
-                    "client_secret": "Clé Client",
-                    "password": "Mot de passe",
-                    "username": "Nom d'utilisateur"
-                }
-            },
-            "reauth_confirm": {
-                "title": "Infornations d'identité fournies invalides",
-                "description": "Un ou plus de vos éléments d'identité fournis sont invalides.",
-                "data": {
-                    "client_id": "ID Client",
-                    "client_secret": "Clé Client",
+                },
+                "data_description": {
+                    "host": "Adresse IP",
                     "password": "Mot de passe",
                     "username": "Nom d'utilisateur"
                 }
             }
         }
     },
-    "options": {
-        "step": {
-            "init": {
-                "title": "Mise à jour des paramètres",
-                "data": {
-                    "host": "Addresse IP",
-                    "client_id": "ID Client",
-                    "client_secret": "Clé Client",
-                    "password": "Mot de passe",
-                    "username": "Nom d'utilisateur",
-                    "use_websocket": "Cocher pour utiliser les WebSockets pour se connecter à la cafetière. Cela permet d'ajouter l'indication qu'une extraction est active."
-                }
+    "entity": {
+        "binary_sensor": {
+            "brew_active": {
+                "name": "Extraction active"
+            },
+            "water_reservoir": {
+                "name": "Réservoir à eau"
+            }
+        },
+        "button": {
+            "start_backflush": {
+                "name": "Démarrer Backflush"
+            }
+        },
+        "sensor": {
+            "drink_stats": {
+                "name": "Statistiques d'extraction"
+            }
+        },
+        "switch": {
+            "auto_on_off": {
+                "name": "Auto On/Off"
+            },
+            "main": {
+                "name": "Main"
+            },
+            "prebrew": {
+                "name": "Préextraction"
+            },
+            "preinfusion": {
+                "name": "Préinfusion"
+            },
+            "steam_boiler_enable": {
+                "name": "Activer Chaudière à vapeur"
+            }
+        },
+        "update": {
+            "gateway_firmware": {
+                "name": "Firmware Passerelle"
+            },
+            "machine_firmware": {
+                "name": "Firmware Machine"
+            }
+        },
+        "water_heater": {
+            "coffee_boiler": {
+                "name": "Chaudière à Café"
+            },
+            "steam_boiler": {
+                "name": "Chaudière à Vapeur"
             }
         }
     },
     "services": {
         "set_auto_on_off_enable": {
-            "name": "Activer/Désactiver ON/OFF auto.",
-            "description": "Active ou désactive l'allumage et l'extinction automatique",
+            "description": "Enable or disable auto on/off for a specific day of the week",
             "fields": {
                 "day_of_week": {
-                    "name": "Jour de la semaine",
-                    "description": "Active ou désactive l'allumage et l'extinction automatique pour un jour spécifique de la semaine"
+                    "description": "Enable or disable auto on/off for a specific day of the week",
+                    "name": "Day of Week"
                 },
                 "enable": {
-                    "name": "Fonction Active",
-                    "description": "Valeur booléenne indiquant si la fonction d'allumage et extinction automatique est activée"
+                    "description": "Boolean value indicating whether to enable or disable auto on/off",
+                    "name": "Enable"
                 }
-            }
+            },
+            "name": "Enable/Disable Auto On/Off"
         },
         "set_auto_on_off_times": {
-            "name": "Régler les heures On/Off Auto",
-            "description": "Régler les heures d'allumage et extinction automatique pour chaque jour de la semaine",
+            "description": "Set the auto on and off times for each day of the week",
             "fields": {
                 "day_of_week": {
-                    "name": "Jour de la semaine",
-                    "description": "Jour de la semaine à changer (lun, mar, mer, jeu, ven, sam, dim)"
-                },
-                "hour_on": {
-                    "name": "Heure On",
-                    "description": "Heure à laquelle allumer la cafetière (0-23)"
-                },
-                "minute_on": {
-                    "name": "Minute On",
-                    "description": "Minute à laquelle allumer la cafetière (0-59)"
+                    "description": "The day of the week to change (mon, tue, wed, thu, fri, sat, sun)",
+                    "name": "Day of Week"
                 },
                 "hour_off": {
-                    "name": "Heure Off",
-                    "description": "Heure à laquelle éteindre la cafetière (0-23)"
+                    "description": "The hour to turn the machine off (0-23)",
+                    "name": "Hour Off"
+                },
+                "hour_on": {
+                    "description": "The hour to turn the machine on (0-23)",
+                    "name": "Hour On"
                 },
                 "minute_off": {
-                    "name": "Minute Off",
-                    "description": "Minute à laquelle éteindre la cafetière (0-59)"
+                    "description": "The minute to turn the machine off (0-59)",
+                    "name": "Minute Off"
+                },
+                "minute_on": {
+                    "description": "The minute to turn the machine on (0-59)",
+                    "name": "Minute On"
                 }
-            }
+            },
+            "name": "Set Auto On/Off Times"
         },
         "set_dose": {
-            "name": "Régler la Dose",
             "description": "Régler la dose associée à un bouton",
             "fields": {
                 "key": {
-                    "name": "Bouton",
-                    "description": "Bouton sur lequel régler la dose (1-4)"
+                    "description": "The button to set the dose for (1-4)",
+                    "name": "Key"
                 },
                 "pulses": {
-                    "name": "Dose",
-                    "description": "Dose en nombre d'impulsions (environ ~0.5ml par impulsion)"
+                    "description": "The dose in pulses (roughly ~0.5ml per pulse)",
+                    "name": "Dose"
                 }
-            }
+            },
+            "name": "Set Dose"
         },
         "set_dose_hot_water": {
             "name": "Régler la dose d'eau chaude",
@@ -152,6 +185,6 @@
                 }
             }
         }
-    },
-    "title": "La Marzocco"
+    }
+
 }
