@@ -49,7 +49,7 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
         translation_key=BREW_ACTIVE,
         device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:cup-water",
-        is_on_fn=lambda client: client.current_status.get(BREW_ACTIVE),
+        is_on_fn=lambda client: bool(client.current_status.get(BREW_ACTIVE)),
         extra_attributes={},
     ),
 )

@@ -3,7 +3,7 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from lmcloud.exceptions import AuthFail, RequestNotSuccessful  # type: ignore[import]
+from lmcloud.exceptions import AuthFail, RequestNotSuccessful
 import voluptuous as vol  # type: ignore[import]
 
 from homeassistant import config_entries, core, exceptions
@@ -58,7 +58,9 @@ STEP_REAUTH_DATA_SCHEMA = LOGIN_DATA_SCHEMA.extend(
 )
 
 
-async def validate_input(hass: core.HomeAssistant, data):
+async def validate_input(
+    hass: core.HomeAssistant, data: Mapping[str, Any]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
 
     try:
@@ -81,17 +83,22 @@ async def validate_input(hass: core.HomeAssistant, data):
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for La Marzocco."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Init config flow."""
         self._discovered: dict[str, str] = {}
         self.reauth_entry: ConfigEntry | None
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle the initial step."""
 
         errors = {}
+
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
             data = user_input.copy()
