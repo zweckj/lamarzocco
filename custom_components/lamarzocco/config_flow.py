@@ -83,7 +83,7 @@ async def get_machines(hass: core.HomeAssistant, data: dict[str, Any]) -> list[s
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for La Marzocco."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Init config flow."""
