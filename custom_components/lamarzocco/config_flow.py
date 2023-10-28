@@ -127,8 +127,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Let user select machine to connect to."""
         errors = {}
         if user_input is not None:
-            machine_name, serial_number = user_input[CONF_MACHINE].split(" ")
-            serial_number = serial_number.strip("()")
+            machine_name, serial_number = user_input[CONF_MACHINE].split("(")
+            machine_name = machine_name.strip(" ")
+            serial_number = serial_number.strip(")")
             await self.async_set_unique_id(serial_number)
             self._abort_if_unique_id_configured()
             self._config[SERIAL_NUMBER] = serial_number
