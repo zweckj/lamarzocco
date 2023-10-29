@@ -75,7 +75,7 @@ async def get_machines(hass: core.HomeAssistant, data: dict[str, Any]) -> list[s
         _LOGGER.error("Failed to connect to server")
         raise CannotConnect
 
-    available_machines = [f"{machine[0]} ({machine[1]})" for machine in machines]
+    available_machines = [f"{machine[1]} ({machine[0]})" for machine in machines]
 
     return available_machines
 
