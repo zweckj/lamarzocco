@@ -92,6 +92,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._config: dict[str, Any] = {}
         self._machines: list[str] = []
 
+    async def async_migrate_entry(hass: core.HomeAssistant, config_entry: ConfigEntry) -> bool:
+        if config_entry.version == 1:
+            config_entry.version = 2
+        return True
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
