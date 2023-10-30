@@ -243,15 +243,27 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            if user_input.get(CONF_HOST) and user_input.get(CONF_HOST) != self.config_entry.data.get(CONF_HOST):
+                lm = LaMarzoccoClient(self.hass, self.config_entry.data)
+                if not await lm.check_local_connection(
+                    credentials=self.config_entry.data,
+                    host=user_input[CONF_HOST],
+                    serial=self.config_entry.data.get(SERIAL_NUMBER)
+                ):
+                    errors[CONF_HOST] = "cannot_connect"
             if not errors:
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=user_input, options=self.config_entry.options
+                )
                 return self.async_create_entry(
                     title="",
-                    data=user_input | self.config_entry.data
+                    data=user_input
                 )
 
         options_schema = vol.Schema(
             {
-                vol.Optional(CONF_USE_BLUETOOTH, default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True)): bool,
+                vol.Optional(CONF_HOST, default=self.config_entry.data.get(CONF_HOST, "")): cv.string,
+                vol.Optional(CONF_USE_BLUETOOTH, default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True)): cv.boolean,
             }
         )
 

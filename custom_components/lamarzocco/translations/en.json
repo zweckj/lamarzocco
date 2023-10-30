@@ -45,8 +45,11 @@
     "options": {
         "step": {
           "init": {
-            "title": "Update Configuration",
-            "use_bluetooth": "Use Bluetooth"
+            "data": {
+                "title": "Update Configuration",
+                "host":"IP address",
+                "use_bluetooth": "Use Bluetooth"
+            }
           }
         }
       },
