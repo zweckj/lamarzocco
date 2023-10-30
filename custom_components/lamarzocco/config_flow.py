@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
-import voluptuous as vol  # type: ignore[import]
+import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.components.bluetooth import BluetoothServiceInfo
@@ -19,6 +19,7 @@ from homeassistant.const import (
     CONF_PORT,
     CONF_USERNAME,
 )
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.selector import (
@@ -29,6 +30,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_MACHINE,
+    CONF_USE_BLUETOOTH,
     DEFAULT_CLIENT_ID,
     DEFAULT_CLIENT_SECRET,
     DEFAULT_PORT_LOCAL,
@@ -46,8 +48,6 @@ LOGIN_DATA_SCHEMA = vol.Schema(
     },
     extra=vol.PREVENT_EXTRA,
 )
-
-STEP_MACHINE_SELECTION_SCHEMA: vol.Schema
 
 STEP_REAUTH_DATA_SCHEMA = LOGIN_DATA_SCHEMA.extend(
     {
@@ -222,6 +222,41 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=STEP_REAUTH_DATA_SCHEMA,
             errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
+    """Handles options flow for the component."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options for the custom component."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            if not errors:
+                return self.async_create_entry(
+                    title="",
+                    data=user_input | self.config_entry.data
+                )
+
+        options_schema = vol.Schema(
+            {
+                vol.Optional(CONF_USE_BLUETOOTH, default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True)): bool,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init", data_schema=options_schema, errors=errors
         )
 
 

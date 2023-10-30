@@ -42,6 +42,14 @@
             }
         }
     },
+    "options": {
+        "step": {
+          "init": {
+            "title": "Update Configuration",
+            "use_bluetooth": "Use Bluetooth"
+          }
+        }
+      },
     "entity": {
         "binary_sensor": {
             "brew_active": {
