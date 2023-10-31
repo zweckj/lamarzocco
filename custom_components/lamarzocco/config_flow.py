@@ -253,7 +253,9 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
                     errors[CONF_HOST] = "cannot_connect"
             if not errors:
                 self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=user_input, options=self.config_entry.options
+                    self.config_entry,
+                    data=self.config_entry.data | user_input,
+                    options=self.config_entry.options,
                 )
                 return self.async_create_entry(
                     title="",
