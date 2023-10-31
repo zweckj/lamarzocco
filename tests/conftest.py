@@ -55,6 +55,11 @@ def mock_lamarzocco() -> Generator[MagicMock, None, None]:
     ):
         lamarzocco = lamarzocco_mock.return_value
 
+        lamarzocco.machine_info = {
+            "machine_name": MACHINE_NAME,
+            "serial_number": "GS01234",
+        }
+
         lamarzocco.model_name = "GS3 AV"
         lamarzocco.true_model_name = "GS3 AV"
         lamarzocco.machine_name = MACHINE_NAME
@@ -72,9 +77,11 @@ def mock_lamarzocco() -> Generator[MagicMock, None, None]:
         lamarzocco.current_status = json.loads(
             load_fixture("current_status.json", DOMAIN)
         )
+        lamarzocco.config = json.loads(load_fixture("config.json", DOMAIN))
+        lamarzocco.statistics = json.loads(load_fixture("statistics.json", DOMAIN))
 
-        lamarzocco.try_connect.return_value = {
-            "machine_name": MACHINE_NAME,
-            "serial_number": "GS01234",
-        }
+        lamarzocco.get_all_machines.return_value = [
+            ("GS01234", "GS3 AV"),
+        ]
+        lamarzocco.check_local_connection.return_value = True
         yield lamarzocco
