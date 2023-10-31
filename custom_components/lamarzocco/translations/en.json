@@ -54,7 +54,7 @@
         },
         "error": {
             "cannot_connect": "Failed to connect"
-          }
+        }
       },
     "entity": {
         "binary_sensor": {

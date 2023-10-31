@@ -246,7 +246,7 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
             if user_input.get(CONF_HOST) and user_input.get(CONF_HOST) != self.config_entry.data.get(CONF_HOST):
                 lm = LaMarzoccoClient(self.hass, self.config_entry.data)
                 if not await lm.check_local_connection(
-                    credentials=self.config_entry.data,
+                    credentials=lm.get_credentials_from_entry_data(self.config_entry.data),
                     host=user_input[CONF_HOST],
                     serial=self.config_entry.data.get(SERIAL_NUMBER)
                 ):

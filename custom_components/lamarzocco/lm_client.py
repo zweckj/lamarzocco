@@ -107,22 +107,12 @@ class LaMarzoccoClient(LMCloud):
 
             if self._lm_bluetooth:
                 _LOGGER.debug("Connecting to machine with Bluetooth")
-                await self.get_hass_bt_client()
-
-        if self._lm_bluetooth:
-            _LOGGER.debug("Connecting to machine with Bluetooth")
-            await self.get_hass_bt_client()
+                await self.get_hass_bt_client()       
 
         host: str = self._entry_data.get(CONF_HOST, "")
         if host:
             _LOGGER.debug("Initializing local API")
             await self._init_local_api(host=host, port=DEFAULT_PORT_LOCAL)
-
-    async def try_connect(self, data: Mapping[str, Any]) -> dict[str, Any]:
-        """Try to connect to the machine, used for validation."""
-        self.client = await self._connect(self._get_credentials_from_entry_data(data))
-        machine_info = await self._get_machine_info()
-        return machine_info
 
     async def set_power(self, enabled: bool) -> None:
         """Set the power state of the machine."""
@@ -192,7 +182,7 @@ class LaMarzoccoClient(LMCloud):
         except BluetoothConnectionFailed as ex:
             _LOGGER.warning(ex)
 
-    def _get_credentials_from_entry_data(
+    def get_credentials_from_entry_data(
         self, entry_data: Mapping[str, Any]
     ) -> dict[str, str]:
         """Get credentials from entry data."""
