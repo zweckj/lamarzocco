@@ -9,6 +9,7 @@ from homeassistant.components.update import (
     UpdateEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -42,7 +43,7 @@ ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
         icon="mdi:cloud-download",
         current_fw_fn=lambda client: client.firmware_version,
         latest_fw_fn=lambda client: client.latest_firmware_version,
-        extra_attributes={},
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     LaMarzoccoUpdateEntityDescription(
         key="gateway_firmware",
@@ -51,7 +52,7 @@ ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
         icon="mdi:cloud-download",
         current_fw_fn=lambda client: client.gateway_version,
         latest_fw_fn=lambda client: client.latest_gateway_version,
-        extra_attributes={},
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -65,7 +66,7 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoUpdateEntity(coordinator, hass, description)
+        LaMarzoccoUpdateEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

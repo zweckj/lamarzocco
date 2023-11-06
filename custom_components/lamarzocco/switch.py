@@ -175,7 +175,6 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         is_on_fn=lambda client: client.current_status["steam_boiler_enable"],
         entity_category=EntityCategory.CONFIG,
-        extra_attributes={},
     ),
 )
 
@@ -189,7 +188,7 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoSwitchEntity(coordinator, hass, description)
+        LaMarzoccoSwitchEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

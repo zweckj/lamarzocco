@@ -57,7 +57,6 @@ ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
         control_fn=lambda client, state: client.set_power(state),
         current_temp_fn=lambda client: client.current_status.get("coffee_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("coffee_set_temp", 0),
-        extra_attributes={},
     ),
     LaMarzoccoWaterHeaterEntityDescription(
         key="steam_boiler",
@@ -68,11 +67,13 @@ ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
         set_temp_fn=lambda client, temp: client.set_steam_temp(round(temp)),
         current_op_fn=lambda client: client.current_status.get(
             "steam_boiler_enable", False
-        ) and client.current_status.get("power", False), # water heater is only on if power is on
+        )
+        and client.current_status.get(
+            "power", False
+        ),  # water heater is only on if power is on
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         current_temp_fn=lambda client: client.current_status.get("steam_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("steam_set_temp", 0),
-        extra_attributes={},
     ),
 )
 
@@ -86,7 +87,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoWaterHeater(coordinator, hass, description)
+        LaMarzoccoWaterHeater(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

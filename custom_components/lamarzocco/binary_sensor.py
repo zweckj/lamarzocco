@@ -9,6 +9,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -42,7 +43,7 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
         is_on_fn=lambda client: not client.current_status.get(
             "water_reservoir_contact"
         ),
-        extra_attributes={},
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     LaMarzoccoBinarySensorEntityDescription(
         key=BREW_ACTIVE,
@@ -50,7 +51,7 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:cup-water",
         is_on_fn=lambda client: bool(client.current_status.get(BREW_ACTIVE)),
-        extra_attributes={},
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -64,7 +65,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoBinarySensorEntity(coordinator, hass, description)
+        LaMarzoccoBinarySensorEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes
