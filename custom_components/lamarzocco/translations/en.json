@@ -71,6 +71,9 @@
             }
         },
         "sensor": {
+            "shot_timer": {
+                "name": "Shot Timer"
+              },
             "drink_stats": {
                 "name": "Drink Stats"
             }

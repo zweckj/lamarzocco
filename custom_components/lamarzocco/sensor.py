@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
@@ -77,6 +78,18 @@ ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
             MODEL_LM: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
             MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
         },
+    ),
+    LaMarzoccoSensorEntityDescription(
+        key="shot_timer",
+        translation_key="shot_timer",
+        icon="mdi:timer",
+        native_unit_of_measurement="s",
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.DURATION,
+        available_fn=lambda client: client.current_status.get("brew_active_duration")
+        is not None,
+        value_fn=lambda client: client.current_status.get("brew_active_duration", 0),
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
