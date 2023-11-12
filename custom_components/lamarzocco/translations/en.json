@@ -6,7 +6,9 @@
         },
         "error": {
             "cannot_connect": "Failed to connect",
+            "no_machines": "No machines found in account",
             "invalid_auth": "Invalid authentication",
+            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
             "unknown": "Unexpected error"
         },
         "flow_title": "La Marzocco Espresso {host}",
@@ -15,6 +17,14 @@
                 "data": {
                     "host": "IP address",
                     "machine": "Machine"
+                },
+                "data_description": {
+                    "host": "Local IP address of the machine"
+                }
+            },
+            "host_selection": {
+                "data": {
+                    "host": "IP address"
                 },
                 "data_description": {
                     "host": "Local IP address of the machine"

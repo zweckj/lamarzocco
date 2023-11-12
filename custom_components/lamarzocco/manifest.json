@@ -23,5 +23,5 @@
   "issue_tracker": "https://github.com/zweckj/lamarzocco/issues",
   "loggers": ["lmcloud"],
   "requirements": ["lmcloud==0.4.6"],
-  "version": "0.12.4"
+  "version": "0.13.0"
 }
