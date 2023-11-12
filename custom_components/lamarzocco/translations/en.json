@@ -1,16 +1,35 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Device is already configured",
+            "already_configured": "Device is already configured",
             "reauth_successful": "Re-authentication was successful"
         },
         "error": {
             "cannot_connect": "Failed to connect",
+            "no_machines": "No machines found in account",
             "invalid_auth": "Invalid authentication",
+            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
             "unknown": "Unexpected error"
         },
         "flow_title": "La Marzocco Espresso {host}",
         "step": {
+            "machine_selection": {
+                "data": {
+                    "host": "IP address",
+                    "machine": "Machine"
+                },
+                "data_description": {
+                    "host": "Local IP address of the machine"
+                }
+            },
+            "host_selection": {
+                "data": {
+                    "host": "IP address"
+                },
+                "data_description": {
+                    "host": "Local IP address of the machine"
+                }
+            },
             "reauth_confirm": {
                 "data": {
                     "client_id": "Client ID",
@@ -19,22 +38,34 @@
                     "username": "Username"
                 },
                 "description": "One or more of your provided credentials are invalid.",
-                "title": "Reauthenticate Integration"
+                "title": "Reauthenticate integration"
             },
             "user": {
                 "data": {
-                    "host": "IP Address",
                     "password": "Password",
                     "username": "Username"
                 },
                 "data_description": {
-                    "host": "Local IP address of the machine",
                     "password": "Your password from the La Marzocco app",
                     "username": "Your username from the La Marzocco app"
                 }
             }
         }
     },
+    "options": {
+        "step": {
+          "init": {
+            "data": {
+                "title": "Update Configuration",
+                "host":"IP address",
+                "use_bluetooth": "Use Bluetooth"
+            }
+          }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect"
+        }
+      },
     "entity": {
         "binary_sensor": {
             "brew_active": {
@@ -50,8 +81,11 @@
             }
         },
         "sensor": {
+            "shot_timer": {
+                "name": "Shot Timer"
+              },
             "drink_stats": {
-                "name": "Drink Statistics"
+                "name": "Drink Stats"
             }
         },
         "switch": {

@@ -1,3 +1,4 @@
 {
-  "name": "La Marzocco"
+  "name": "La Marzocco",  
+  "homeassistant": "2023.8.0"
 }

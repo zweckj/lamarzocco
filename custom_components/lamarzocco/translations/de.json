@@ -1,57 +1,124 @@
 {
     "config": {
-        "flow_title": "La Marzocco Espresso {host}",
         "abort": {
-            "single_instance_allowed": "Gerät ist bereits konfiguriert. Nur eine Instanz ist unterstützt.",
-            "reauth_successful": "Zugangsdaten erfolgreich aktualisiert."
+            "already_configured": "Device is already configured",
+            "reauth_successful": "Re-authentication was successful"
         },
         "error": {
             "cannot_connect": "Verbindung fehlgeschlagen",
-            "invalid_auth": "Ungültige Zugangsdaten",
-            "unknown": "Unbekannter Fehler"
+            "no_machines": "Keine Maschine im Account gefunden",
+            "invalid_auth": "Ungültige Anmeldedaten",
+            "machine_not_found": "Ausgewählte Maschine wurde nicht im Account gefunden",
+            "unknown": "Unerwarteter FEhler"
         },
+        "flow_title": "La Marzocco Espresso {host}",
         "step": {
-            "user": {
+            "machine_selection": {
                 "data": {
-                    "host": "IP Adresse",
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
-                    "password": "Passwort",
-                    "username": "Benutzername"
+                    "host": "IP Adreses",
+                    "machine": "Maschine"
+                },
+                "data_description": {
+                    "host": "IP Adresse"
                 }
             },
-            "confirm": {
+            "host_selection": {
                 "data": {
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
-                    "password": "Passwort",
-                    "username": "Benutzername"
+                    "host": "IP Adresse"
+                },
+                "data_description": {
+                    "host": "IP Adresse"
                 }
             },
             "reauth_confirm": {
-                "title": "Zugangsdaten aktualisieren",
-                "description": "Ein oder mehrere der eingegebenen Werte sind ungültig. Bitte aktualisiere die Zugangsdaten.",
                 "data": {
                     "client_id": "Client ID",
                     "client_secret": "Client Secret",
                     "password": "Passwort",
-                    "username": "Benutzername"
+                    "username": "Username"
+                },
+                "description": "Eins dieser Daten ist ungültig.",
+                "title": "Erneute Anmeldung"
+            },
+            "user": {
+                "data": {
+                    "password": "Passwort",
+                    "username": "Username"
+                },
+                "data_description": {
+                    "password": "Passwort aus der La Marzocco app",
+                    "username": "User name aus der La Marzocco app"
                 }
             }
         }
     },
     "options": {
         "step": {
-            "init": {
+          "init": {
+            "data": {
                 "title": "Einstellungen aktualisieren",
-                "data": {
-                    "host": "IP Adresse",
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
-                    "password": "Passwort",
-                    "username": "Benutzername",
-                    "use_websocket": "Benutze WebSockets um dich mit der Maschine zu verbinden. Dies fügt einen zusätzlichen Sensor hinzu der anzeigt wann immer ein Bezug läuft."
-                }
+                "host":"IP Addresse",
+                "use_bluetooth": "Bluetooth benutzen"
+            }
+          }
+        },
+        "error": {
+            "cannot_connect": "Verbindung fehlgeschlagen"
+        }
+      },
+    "entity": {
+        "binary_sensor": {
+            "brew_active": {
+                "name": "Aktiver Bezug"
+            },
+            "water_reservoir": {
+                "name": "Wassertank"
+            }
+        },
+        "button": {
+            "start_backflush": {
+                "name": "Rückspülen starten"
+            }
+        },
+        "sensor": {
+            "shot_timer": {
+                "name": "Shot Timer"
+              },
+            "drink_stats": {
+                "name": "Drink Stats"
+            }
+        },
+        "switch": {
+            "auto_on_off": {
+                "name": "Auto On/Off"
+            },
+            "main": {
+                "name": "Hauptschalter"
+            },
+            "prebrew": {
+                "name": "Prebrew"
+            },
+            "preinfusion": {
+                "name": "Preinfusion"
+            },
+            "steam_boiler_enable": {
+                "name": "Aktiviere Dampfkessel"
+            }
+        },
+        "update": {
+            "gateway_firmware": {
+                "name": "Gateway Firmware"
+            },
+            "machine_firmware": {
+                "name": "Machine Firmware"
+            }
+        },
+        "water_heater": {
+            "coffee_boiler": {
+                "name": "Kaffeeboiler"
+            },
+            "steam_boiler": {
+                "name": "Dampfboiler"
             }
         }
     },

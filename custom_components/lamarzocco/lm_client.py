@@ -19,6 +19,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_USE_BLUETOOTH,
     DEFAULT_PORT_LOCAL,
     MACHINE_NAME,
     MODEL_GS3_AV,
@@ -79,7 +80,8 @@ class LaMarzoccoClient(LMCloud):
         """Connect to the machine."""
         _LOGGER.debug("Initializing Cloud API")
         await self._init_cloud_api(
-            credentials=self._get_credentials_from_entry_data(self._entry_data)
+            credentials=self.get_credentials_from_entry_data(self._entry_data),
+            machine_serial=self._entry_data.get(SERIAL_NUMBER),
         )
         _LOGGER.debug("Model name: %s", self.model_name)
 
@@ -87,35 +89,30 @@ class LaMarzoccoClient(LMCloud):
         mac_address: str = self._entry_data.get(CONF_MAC, "")
         name: str = self._entry_data.get(CONF_NAME, "")
 
-        if mac_address and name:
-            # coming from discovery
-            _LOGGER.debug("Initializing with known Bluetooth device")
-            await self._init_bluetooth_with_known_device(username, mac_address, name)
-        else:
-            # check if there are any bluetooth adapters to use
-            count = bluetooth.async_scanner_count(self.hass, connectable=True)
-            if count > 0:
-                _LOGGER.debug("Found Bluetooth adapters, initializing with Bluetooth")
-                bt_scanner = bluetooth.async_get_scanner(self.hass)
+        if self._entry_data.get(CONF_USE_BLUETOOTH, True):
+            if mac_address and name:
+                # coming from discovery
+                _LOGGER.debug("Initializing with known Bluetooth device")
+                await self._init_bluetooth_with_known_device(username, mac_address, name)
+            else:
+                # check if there are any bluetooth adapters to use
+                count = bluetooth.async_scanner_count(self.hass, connectable=True)
+                if count > 0:
+                    _LOGGER.debug("Found Bluetooth adapters, initializing with Bluetooth")
+                    bt_scanner = bluetooth.async_get_scanner(self.hass)
 
-                await self._init_bluetooth(
-                    username=username, init_client=False, bluetooth_scanner=bt_scanner
-                )
+                    await self._init_bluetooth(
+                        username=username, init_client=False, bluetooth_scanner=bt_scanner
+                    )
 
-        if self._lm_bluetooth:
-            _LOGGER.debug("Connecting to machine with Bluetooth")
-            await self.get_hass_bt_client()
+            if self._lm_bluetooth:
+                _LOGGER.debug("Connecting to machine with Bluetooth")
+                await self.get_hass_bt_client()       
 
         host: str = self._entry_data.get(CONF_HOST, "")
         if host:
             _LOGGER.debug("Initializing local API")
             await self._init_local_api(host=host, port=DEFAULT_PORT_LOCAL)
-
-    async def try_connect(self, data: Mapping[str, Any]) -> dict[str, Any]:
-        """Try to connect to the machine, used for validation."""
-        self.client = await self._connect(self._get_credentials_from_entry_data(data))
-        machine_info = await self._get_machine_info()
-        return machine_info
 
     async def set_power(self, enabled: bool) -> None:
         """Set the power state of the machine."""
@@ -185,7 +182,7 @@ class LaMarzoccoClient(LMCloud):
         except BluetoothConnectionFailed as ex:
             _LOGGER.warning(ex)
 
-    def _get_credentials_from_entry_data(
+    def get_credentials_from_entry_data(
         self, entry_data: Mapping[str, Any]
     ) -> dict[str, str]:
         """Get credentials from entry data."""

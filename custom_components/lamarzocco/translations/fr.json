@@ -1,16 +1,35 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Machine déjà configurée",
+            "already_configured": "Machine déjà configurée",
             "reauth_successful": "Re-authentificacation réussie"
         },
         "error": {
             "cannot_connect": "Erreur de connexion",
+            "no_machines": "No machines found in account",
             "invalid_auth": "Authentification invalide",
+            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
             "unknown": "Erreur inattendue"
         },
         "flow_title": "La Marzocco Espresso {host}",
         "step": {
+            "machine_selection": {
+                "data": {
+                    "host": "Adresse IP",
+                    "machine": "Machine"
+                },
+                "data_description": {
+                    "host": "Adresse IP"
+                }
+            },
+            "host_selection": {
+                "data": {
+                    "host": "Adresse IP"
+                },
+                "data_description": {
+                    "host": "Adresse IP"
+                }
+            },
             "reauth_confirm": {
                 "data": {
                     "client_id": "ID Client",
@@ -19,16 +38,14 @@
                     "username": "Nom d'utilisateur"
                 },
                 "description": "Un ou plus de vos éléments d'identité fournis sont invalides.",
-                "title": "Infornations d'identité fournies invalides",
+                "title": "Infornations d'identité fournies invalides"
            },
             "user": {
                 "data": {
-                    "host": "Adresse IP",
                     "password": "Mot de passe",
                     "username": "Nom d'utilisateur"
                 },
                 "data_description": {
-                    "host": "Adresse IP",
                     "password": "Mot de passe",
                     "username": "Nom d'utilisateur"
                 }
@@ -50,6 +67,9 @@
             }
         },
         "sensor": {
+            "shot_timer": {
+                "name": "Shot Timer"
+              },
             "drink_stats": {
                 "name": "Statistiques d'extraction"
             }

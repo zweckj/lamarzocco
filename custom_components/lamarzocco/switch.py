@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -133,6 +134,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         icon="mdi:alarm",
         control_fn=lambda client, state: client.set_auto_on_off_global(state),
         is_on_fn=lambda client: client.current_status["global_auto"] == "Enabled",
+        entity_category=EntityCategory.CONFIG,
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_AUTO_ON_OFF,
             MODEL_GS3_MP: ATTR_MAP_AUTO_ON_OFF,
@@ -146,6 +148,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         icon="mdi:water",
         control_fn=lambda client, state: client.set_prebrew(state),
         is_on_fn=lambda client: client.current_status["enable_prebrewing"],
+        entity_category=EntityCategory.CONFIG,
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_PREBREW_GS3_AV,
             MODEL_LM: ATTR_MAP_PREBREW_LM,
@@ -158,6 +161,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         icon="mdi:water",
         control_fn=lambda client, state: client.set_preinfusion(state),
         is_on_fn=lambda client: client.current_status["enable_preinfusion"],
+        entity_category=EntityCategory.CONFIG,
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_PREINFUSION_GS3_AV,
             MODEL_LM: ATTR_MAP_PREINFUSION_LM,
@@ -170,7 +174,7 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         icon="mdi:water-boiler",
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         is_on_fn=lambda client: client.current_status["steam_boiler_enable"],
-        extra_attributes={},
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 
@@ -184,7 +188,7 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoSwitchEntity(coordinator, hass, description)
+        LaMarzoccoSwitchEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

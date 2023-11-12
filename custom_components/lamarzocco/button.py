@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, MODEL_GS3_AV, MODEL_LM, MODEL_LMU
+from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
@@ -36,11 +36,6 @@ ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
         translation_key="start_backflush",
         icon="mdi:water-sync",
         press_fn=lambda client: client.start_backflush(),
-        extra_attributes={
-            MODEL_GS3_AV: None,
-            MODEL_LM: None,
-            MODEL_LMU: None,
-        },
     ),
 )
 
@@ -54,7 +49,7 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoButtonEntity(coordinator, hass, description)
+        LaMarzoccoButtonEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

@@ -4,11 +4,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -69,12 +71,25 @@ ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
         value_fn=lambda client: sum(
             client.current_status.get(p, 0) for p in ("drinks_k1", "total_flushing")
         ),
+        entity_category=EntityCategory.DIAGNOSTIC,
         extra_attributes={
             MODEL_GS3_AV: ATTR_MAP_DRINK_STATS_GS3_AV,
             MODEL_GS3_MP: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
             MODEL_LM: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
             MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
         },
+    ),
+    LaMarzoccoSensorEntityDescription(
+        key="shot_timer",
+        translation_key="shot_timer",
+        icon="mdi:timer",
+        native_unit_of_measurement="s",
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.DURATION,
+        available_fn=lambda client: client.current_status.get("brew_active_duration")
+        is not None,
+        value_fn=lambda client: client.current_status.get("brew_active_duration", 0),
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -88,7 +103,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoSensorEntity(coordinator, hass, description)
+        LaMarzoccoSensorEntity(coordinator, config_entry, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes
