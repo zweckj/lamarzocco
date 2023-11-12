@@ -18,7 +18,6 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PORT,
     CONF_USERNAME,
-    CONF_USE_BLUETOOTH,
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
@@ -32,6 +31,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_MACHINE,
+    CONF_USE_BLUETOOTH,
     DEFAULT_CLIENT_ID,
     DEFAULT_CLIENT_SECRET,
     DEFAULT_PORT_LOCAL,
@@ -80,7 +80,7 @@ async def get_machines(
     return machines
 
 
-class LmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for La Marzocco."""
 
     VERSION = 2
@@ -290,12 +290,16 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            if user_input.get(CONF_HOST) and user_input.get(CONF_HOST) != self.config_entry.data.get(CONF_HOST):
+            if user_input.get(CONF_HOST) and user_input.get(
+                CONF_HOST
+            ) != self.config_entry.data.get(CONF_HOST):
                 lm = LaMarzoccoClient(self.hass, self.config_entry.data)
                 if not await lm.check_local_connection(
-                    credentials=lm.get_credentials_from_entry_data(self.config_entry.data),
+                    credentials=lm.get_credentials_from_entry_data(
+                        self.config_entry.data
+                    ),
                     host=user_input[CONF_HOST],
-                    serial=self.config_entry.data.get(CONF_MACHINE)
+                    serial=self.config_entry.data.get(CONF_MACHINE),
                 ):
                     errors[CONF_HOST] = "cannot_connect"
             if not errors:
@@ -304,15 +308,17 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
                     data=self.config_entry.data | user_input,
                     options=self.config_entry.options,
                 )
-                return self.async_create_entry(
-                    title="",
-                    data=user_input
-                )
+                return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema(
             {
-                vol.Optional(CONF_HOST, default=self.config_entry.data.get(CONF_HOST, "")): cv.string,
-                vol.Optional(CONF_USE_BLUETOOTH, default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True)): cv.boolean,
+                vol.Optional(
+                    CONF_HOST, default=self.config_entry.data.get(CONF_HOST, "")
+                ): cv.string,
+                vol.Optional(
+                    CONF_USE_BLUETOOTH,
+                    default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True),
+                ): cv.boolean,
             }
         )
 
@@ -320,8 +326,10 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
             step_id="init", data_schema=options_schema, errors=errors
         )
 
+
 class NoMachines(exceptions.HomeAssistantError):
     """Error to indicate we couldn't find machines."""
+
 
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""

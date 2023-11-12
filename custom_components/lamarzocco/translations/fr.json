@@ -6,7 +6,9 @@
         },
         "error": {
             "cannot_connect": "Erreur de connexion",
+            "no_machines": "No machines found in account",
             "invalid_auth": "Authentification invalide",
+            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
             "unknown": "Erreur inattendue"
         },
         "flow_title": "La Marzocco Espresso {host}",
@@ -15,6 +17,14 @@
                 "data": {
                     "host": "Adresse IP",
                     "machine": "Machine"
+                },
+                "data_description": {
+                    "host": "Adresse IP"
+                }
+            },
+            "host_selection": {
+                "data": {
+                    "host": "Adresse IP"
                 },
                 "data_description": {
                     "host": "Adresse IP"
@@ -57,6 +67,9 @@
             }
         },
         "sensor": {
+            "shot_timer": {
+                "name": "Shot Timer"
+              },
             "drink_stats": {
                 "name": "Statistiques d'extraction"
             }
