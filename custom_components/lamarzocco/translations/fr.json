@@ -6,9 +6,9 @@
         },
         "error": {
             "cannot_connect": "Erreur de connexion",
-            "no_machines": "No machines found in account",
+            "no_machines": "Aucune machine trouvée pour le compte",
             "invalid_auth": "Authentification invalide",
-            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
+            "machine_not_found": "La machine configurée n'a pas été trouvée dans votre compte. Etes-vous connecté sur le bon compte ?",
             "unknown": "Erreur inattendue"
         },
         "flow_title": "La Marzocco Espresso {host}",
