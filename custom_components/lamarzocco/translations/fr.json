@@ -6,9 +6,9 @@
         },
         "error": {
             "cannot_connect": "Erreur de connexion",
-            "no_machines": "No machines found in account",
+            "no_machines": "Aucune machine trouvée pour le compte",
             "invalid_auth": "Authentification invalide",
-            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
+            "machine_not_found": "La machine configurée n'a pas été trouvée dans votre compte. Etes-vous connecté sur le bon compte ?",
             "unknown": "Erreur inattendue"
         },
         "flow_title": "La Marzocco Espresso {host}",
@@ -110,54 +110,54 @@
     },
     "services": {
         "set_auto_on_off_enable": {
-            "description": "Enable or disable auto on/off for a specific day of the week",
+            "description": "Activer ou désactiver l'allumage/extinction automatique pour un jour spécifique de la semaine",
             "fields": {
                 "day_of_week": {
-                    "description": "Enable or disable auto on/off for a specific day of the week",
+                    "description": "Activer ou désactiver l'allumage/extinction automatique pour un jour spécifique de la semaine",
                     "name": "Day of Week"
                 },
                 "enable": {
-                    "description": "Boolean value indicating whether to enable or disable auto on/off",
+                    "description": "Valur booléenne indiquant si activer ou désactiver la fonction d'allumange/extinction automatique",
                     "name": "Enable"
                 }
             },
-            "name": "Enable/Disable Auto On/Off"
+            "name": "Activer/Désactiver Allumage/Extinction auto"
         },
         "set_auto_on_off_times": {
-            "description": "Set the auto on and off times for each day of the week",
+            "description": "Régler les heures d'allumage et d'extinction automatiques pour chaque jour de la semaine",
             "fields": {
                 "day_of_week": {
-                    "description": "The day of the week to change (mon, tue, wed, thu, fri, sat, sun)",
-                    "name": "Day of Week"
+                    "description": "Jour de la semaine à changer (lun, mar, mer, jeu, ven, sam, dim)",
+                    "name": "Jour de la semaine"
                 },
                 "hour_off": {
-                    "description": "The hour to turn the machine off (0-23)",
-                    "name": "Hour Off"
+                    "description": "Heure d'extinction de la machine (0-23)",
+                    "name": "Heure Off"
                 },
                 "hour_on": {
-                    "description": "The hour to turn the machine on (0-23)",
-                    "name": "Hour On"
+                    "description": "Heure d'allumage de la machine (0-23)",
+                    "name": "Heure On"
                 },
                 "minute_off": {
-                    "description": "The minute to turn the machine off (0-59)",
+                    "description": "Minute d'extinction de la machine (0-59)",
                     "name": "Minute Off"
                 },
                 "minute_on": {
-                    "description": "The minute to turn the machine on (0-59)",
+                    "description": "Minute d'allumage de ma machine (0-59)",
                     "name": "Minute On"
                 }
             },
-            "name": "Set Auto On/Off Times"
+            "name": "Régler Heures Allumange/Extintion auto"
         },
         "set_dose": {
             "description": "Régler la dose associée à un bouton",
             "fields": {
                 "key": {
-                    "description": "The button to set the dose for (1-4)",
-                    "name": "Key"
+                    "description": "Le bouton sur lequel régler la dose (1-4)",
+                    "name": "Bouton"
                 },
                 "pulses": {
-                    "description": "The dose in pulses (roughly ~0.5ml per pulse)",
+                    "description": "Dose en impulsions (environ ~0.5ml par impulsion)",
                     "name": "Dose"
                 }
             },
