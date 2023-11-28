@@ -8,14 +8,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-from .const import (
-    DOMAIN,
-    FRI,
+from lmcloud.const import (
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
+)
+
+from .const import (
+    DOMAIN,
+    FRI,
     MON,
     SAT,
     SUN,
@@ -188,7 +190,7 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoSwitchEntity(coordinator, config_entry, description)
+        LaMarzoccoSwitchEntity(coordinator, hass, description)
         for description in ENTITIES
         if not description.extra_attributes
         or coordinator.lm.model_name in description.extra_attributes

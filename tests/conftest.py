@@ -1,17 +1,25 @@
 """Lamarzocco session fixtures."""
 
-from collections.abc import Generator
 import json
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from homeassistant.components.lamarzocco.const import DOMAIN
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    load_fixture,
+)
 
-from . import DEFAULT_CONF, MACHINE_NAME, USER_INPUT
+from custom_components.lamarzocco.const import DOMAIN
 
-from tests.common import MockConfigEntry, load_fixture
+from . import MACHINE_NAME, USER_INPUT
+
+
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):
+    """This fixture enables loading custom integrations in all tests."""
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +33,7 @@ def mock_config_entry() -> MockConfigEntry:
     return MockConfigEntry(
         title="My LaMarzocco",
         domain=DOMAIN,
-        data=DEFAULT_CONF | USER_INPUT,
+        data=USER_INPUT,
         unique_id="very_unique",
     )
 
@@ -71,6 +79,7 @@ def mock_lamarzocco() -> Generator[MagicMock, None, None]:
         lamarzocco.latest_gateway_version = "v3.1-rc4"
 
         lamarzocco.connect.return_value = None
+        lamarzocco.update_machine_status.return_value = None
         lamarzocco.websocket_connect.return_value = None
         lamarzocco.update_local_machine_status.return_value = None
 

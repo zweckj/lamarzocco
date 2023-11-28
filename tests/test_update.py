@@ -4,16 +4,21 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from homeassistant.components.lamarzocco.const import DOMAIN
 from homeassistant.components.update import (
     ATTR_INSTALLED_VERSION,
     ATTR_LATEST_VERSION,
     UpdateDeviceClass,
 )
-from homeassistant.const import ATTR_DEVICE_CLASS, ATTR_FRIENDLY_NAME, ATTR_ICON
+from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
+    ATTR_FRIENDLY_NAME,
+    ATTR_ICON,
+)
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.lamarzocco.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("init_integration")
 

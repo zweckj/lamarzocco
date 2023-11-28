@@ -4,8 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -22,23 +21,23 @@ class LaMarzoccoEntityDescription(EntityDescription):
 
 
 @dataclass
-class LaMarzoccoEntity(CoordinatorEntity):
+class LaMarzoccoEntity(CoordinatorEntity[LmApiCoordinator]):
     """Common elements for all entities."""
 
     entity_description: LaMarzoccoEntityDescription
+    _attr_has_entity_name: bool = True
 
     def __init__(
         self,
         coordinator: LmApiCoordinator,
-        config_entry: ConfigEntry,
+        hass: HomeAssistant,
         entity_description: LaMarzoccoEntityDescription,
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
-        self._config_entry = config_entry
+        self._hass = hass
         self.entity_description = entity_description
         self._lm_client = self.coordinator.data
-        self._attr_has_entity_name = True
         self._attr_unique_id = (
             f"{self._lm_client.serial_number}_{self.entity_description.key}"
         )
@@ -72,12 +71,6 @@ class LaMarzoccoEntity(CoordinatorEntity):
 
         keys = [tuple_to_str(key) for key in attr]
         return {key: bool_to_str(data[key]) for key in keys if key in data}
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._lm_client = self.coordinator.data
-        self.async_write_ha_state()
 
     async def _update_ha_state(self) -> None:
         """Write the intermediate value returned from the action to HA state before actually refreshing."""

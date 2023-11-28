@@ -12,14 +12,16 @@ import voluptuous as vol  # type: ignore[import]
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-
-from .const import (
-    DAYS,
-    DOMAIN,
+from lmcloud.const import (
     MODEL_GS3_AV,
     MODEL_GS3_MP,
     MODEL_LM,
     MODEL_LMU,
+)
+
+from .const import (
+    DAYS,
+    DOMAIN,
     UPDATE_DELAY,
 )
 from .coordinator import LmApiCoordinator
