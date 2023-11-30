@@ -60,10 +60,14 @@ If you don't have HACS installed or would prefer to install manually.
 
 ## Configuration
 
-Add the integration manually.
+Click the following button to set up this integration in Home Assistant.
 
-1. Navigate to Configuration->Integrations
-2. Hit the "+ Add New Integration" button in the lower-right
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=lamarzocco)
+
+Alternatively, you may add the integration manually.
+
+1. Navigate to Settings->Devices & Services
+2. Hit the "+ Add Integration" button in the lower-right
 3. Search for "La Marzocco" and select it
 4. You'll be presented with a dialog box like this:
 
