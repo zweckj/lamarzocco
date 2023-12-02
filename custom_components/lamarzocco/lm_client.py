@@ -82,27 +82,27 @@ class LaMarzoccoClient(LMCloud):
 
             await self.update_local_machine_status(force_update=True)
 
-    async def set_power(self, enabled: bool) -> None:
+    async def set_power(self, enabled: bool) -> bool:
         """Set the power state of the machine."""
         await self.get_hass_bt_client()
-        await super().set_power(enabled)
+        return await super().set_power(enabled)
 
-    async def set_steam_boiler_enable(self, enable: bool) -> None:
+    async def set_steam_boiler_enable(self, enable: bool) -> bool:
         """Set the steam boiler state of the machine."""
         await self.get_hass_bt_client()
-        await self.set_steam(enable)
+        return await self.set_steam(enable)
 
-    async def set_coffee_temp(self, temperature: float) -> None:
+    async def set_coffee_temp(self, temperature: float) -> bool:
         """Set the coffee temperature of the machine."""
         await self.get_hass_bt_client()
-        await super().set_coffee_temp(temperature)
+        return await super().set_coffee_temp(temperature)
 
-    async def set_steam_temp(self, temperature: int) -> None:
+    async def set_steam_temp(self, temperature: int) -> bool:
         """Set the steam temperature of the machine."""
         possible_temps = [126, 128, 131]
         min(possible_temps, key=lambda x: abs(x - temperature))
         await self.get_hass_bt_client()
-        await super().set_steam_temp(temperature)
+        return await super().set_steam_temp(temperature)
 
     async def get_hass_bt_client(self) -> None:
         """Get a Bleak Client for the machine."""

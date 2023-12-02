@@ -52,7 +52,7 @@ async def async_setup_entry(
         LaMarzoccoButtonEntity(coordinator, hass, description)
         for description in ENTITIES
         if not description.extra_attributes
-        or coordinator.lm.model_name in description.extra_attributes
+        or coordinator.data.model_name in description.extra_attributes
     )
 
 
@@ -64,4 +64,4 @@ class LaMarzoccoButtonEntity(LaMarzoccoEntity, ButtonEntity):
     async def async_press(self, **kwargs) -> None:
         """Press button."""
         await self.entity_description.press_fn(self._lm_client)
-        await self._update_ha_state()
+        self.async_write_ha_state()

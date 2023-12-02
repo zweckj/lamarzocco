@@ -1,6 +1,5 @@
 """Base class for the La Marzocco entities."""
 
-import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -9,7 +8,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, UPDATE_DELAY
+from .const import DOMAIN
 from .coordinator import LmApiCoordinator
 
 
@@ -71,10 +70,3 @@ class LaMarzoccoEntity(CoordinatorEntity[LmApiCoordinator]):
 
         keys = [tuple_to_str(key) for key in attr]
         return {key: bool_to_str(data[key]) for key in keys if key in data}
-
-    async def _update_ha_state(self) -> None:
-        """Write the intermediate value returned from the action to HA state before actually refreshing."""
-        self.async_write_ha_state()
-        # wait for a bit before getting a new state, to let the machine settle in to any state changes
-        await asyncio.sleep(UPDATE_DELAY)
-        await self.coordinator.async_request_refresh()

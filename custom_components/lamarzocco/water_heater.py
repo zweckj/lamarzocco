@@ -32,8 +32,8 @@ class LaMarzoccoWaterHeaterEntityDescriptionMixin:
     current_op_fn: Callable[[LaMarzoccoClient], bool]
     current_temp_fn: Callable[[LaMarzoccoClient], float | int]
     target_temp_fn: Callable[[LaMarzoccoClient], float | int]
-    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, None]]
-    set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, None]]
+    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
+    set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, bool]]
 
 
 @dataclass
@@ -141,17 +141,17 @@ class LaMarzoccoWaterHeater(LaMarzoccoEntity, WaterHeaterEntity):
         await self.entity_description.set_temp_fn(
             self._lm_client, round(temperature, 1)
         )
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the water heater on."""
         await self.entity_description.control_fn(self._lm_client, True)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the water heater off."""
         await self.entity_description.control_fn(self._lm_client, False)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set the operation mode."""

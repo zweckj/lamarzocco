@@ -3,28 +3,15 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
+from lmcloud.const import MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
+
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from lmcloud.const import (
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-)
 
-from .const import (
-    DOMAIN,
-    FRI,
-    MON,
-    SAT,
-    SUN,
-    THU,
-    TUE,
-    WED,
-)
+from .const import DOMAIN, FRI, MON, SAT, SUN, THU, TUE, WED
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
@@ -103,7 +90,7 @@ ATTR_MAP_PREBREW_LM = [
 class LaMarzoccoSwitchEntityDescriptionMixin:
     """Description of an La Marzocco Switch."""
 
-    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, None]]
+    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
     is_on_fn: Callable[[LaMarzoccoClient], bool]
 
 
@@ -193,7 +180,7 @@ async def async_setup_entry(
         LaMarzoccoSwitchEntity(coordinator, hass, description)
         for description in ENTITIES
         if not description.extra_attributes
-        or coordinator.lm.model_name in description.extra_attributes
+        or coordinator.data.model_name in description.extra_attributes
     )
 
 
@@ -205,12 +192,12 @@ class LaMarzoccoSwitchEntity(LaMarzoccoEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn device on."""
         await self.entity_description.control_fn(self._lm_client, True)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn device off."""
         await self.entity_description.control_fn(self._lm_client, False)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool:

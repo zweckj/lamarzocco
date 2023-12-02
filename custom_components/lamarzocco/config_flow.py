@@ -16,6 +16,7 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
 )
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.selector import (
@@ -276,9 +277,7 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
             ) != self.config_entry.data.get(CONF_HOST):
                 lm = LaMarzoccoClient(self.hass, self.config_entry.data)
                 if not await lm.check_local_connection(
-                    credentials=lm.get_credentials_from_entry_data(
-                        self.config_entry.data
-                    ),
+                    credentials=self.config_entry.data,
                     host=user_input[CONF_HOST],
                     serial=self.config_entry.data.get(CONF_MACHINE),
                 ):

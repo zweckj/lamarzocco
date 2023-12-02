@@ -5,8 +5,6 @@ from typing import Final
 DOMAIN: Final = "lamarzocco"
 
 POLLING_INTERVAL: Final = 30
-UPDATE_DELAY: Final = 3
-
 
 GLOBAL: Final = "global"
 MON: Final = "mon"

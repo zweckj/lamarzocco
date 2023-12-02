@@ -2,29 +2,19 @@
 # mypy: disable-error-code="literal-required, misc"
 # Mypy  doesn't like variables as keys in a typeddict, so we have to disable this error
 
-import asyncio
 from collections.abc import Callable
 import logging
 from typing import TypedDict
 
+from lmcloud.const import MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
 import voluptuous as vol  # type: ignore[import]
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from lmcloud.const import (
-    MODEL_GS3_AV,
-    MODEL_GS3_MP,
-    MODEL_LM,
-    MODEL_LMU,
-)
+from homeassistant.helpers import config_validation as cv
 
-from .const import (
-    DAYS,
-    DOMAIN,
-    UPDATE_DELAY,
-)
-from .coordinator import LmApiCoordinator
+from .const import DAYS, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,12 +59,6 @@ async def call_service(func, *args, **kwargs):
         raise HomeAssistantError("Service call encountered error: %s" % str(ex)) from ex
 
 
-async def update_ha_state(coordinator: LmApiCoordinator):
-    """Update the HA state."""
-    await asyncio.sleep(UPDATE_DELAY)
-    await coordinator.async_request_refresh()
-
-
 async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
     """Create and register services for the La Marzocco integration."""
 
@@ -87,7 +71,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
         await call_service(
             lm.set_auto_on_off_enable, day_of_week=day_of_week, enable=enable
         )
-        await update_ha_state(coordinator)
         return True
 
     async def set_auto_on_off_times(service: ServiceCall):
@@ -114,7 +97,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
             hour_off=hour_off,
             minute_off=minute_off,
         )
-        await update_ha_state(coordinator)
         return True
 
     async def set_dose(service: ServiceCall):
@@ -124,7 +106,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.debug("Setting dose for key: %s to pulses: %s", key, pulses)
         await call_service(lm.set_dose, key=key, value=pulses)
-        await update_ha_state(coordinator)
         return True
 
     async def set_dose_hot_water(service: ServiceCall):
@@ -133,7 +114,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.debug("Setting hot water dose to seconds: %s", seconds)
         await call_service(lm.set_dose_hot_water, value=seconds)
-        await update_ha_state(coordinator)
         return True
 
     async def set_prebrew_times(service: ServiceCall):
@@ -151,7 +131,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
             seconds_on=seconds_on,
             seconds_off=seconds_off,
         )
-        await update_ha_state(coordinator)
         return True
 
     async def set_preinfusion_time(service: ServiceCall):
@@ -165,7 +144,6 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
             key=key,
             seconds=seconds,
         )
-        await update_ha_state(coordinator)
         return True
 
     INTEGRATION_SERVICES: dict[str, IntegrationService] = {
@@ -193,7 +171,7 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
         SERVICE_AUTO_ON_OFF_ENABLE: {
             SCHEMA: {
                 vol.Required(CONF_DAY_OF_WEEK): vol.In(DAYS),
-                vol.Required(CONF_ENABLE): vol.Boolean(),
+                vol.Required(CONF_ENABLE): cv.boolean,
             },
             SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU],
             FUNC: set_auto_on_off_enable,
