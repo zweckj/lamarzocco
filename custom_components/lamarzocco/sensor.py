@@ -20,26 +20,17 @@ from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
-DRINKS = "drinks"
-CONTINUOUS = "continuous"
-TOTAL_COFFEE = "total_coffee"
-TOTAL_FLUSHING = "total_flushing"
-
 ATTR_MAP_DRINK_STATS_GS3_AV = [
-    (DRINKS, "k1"),
-    (DRINKS, "k2"),
-    (DRINKS, "k3"),
-    (DRINKS, "k4"),
-    CONTINUOUS,
-    TOTAL_FLUSHING,
-    TOTAL_COFFEE,
+    "drinks_k1",
+    "drinks_k2",
+    "drinks_k3",
+    "drinks_k4",
+    "continuous",
+    "total_coffee",
+    "total_flushing",
 ]
 
-ATTR_MAP_DRINK_STATS_GS3_MP_LM = [
-    (DRINKS, "k1"),
-    TOTAL_FLUSHING,
-    TOTAL_COFFEE,
-]
+ATTR_MAP_DRINK_STATS_GS3_MP_LM = ["drinks_k1", "total_flushing", "total_coffee"]
 
 
 @dataclass

@@ -25,7 +25,7 @@ class LmApiCoordinator(DataUpdateCoordinator[LaMarzoccoClient]):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
         self._lm = LaMarzoccoClient(
             hass=hass,
-            entry_data=entry.data,
+            entry=entry,
             callback_websocket_notify=self.async_update_listeners,
         )
         self.data = self._lm
@@ -43,7 +43,7 @@ class LmApiCoordinator(DataUpdateCoordinator[LaMarzoccoClient]):
             raise ConfigEntryAuthFailed(msg) from ex
         except RequestNotSuccessful as ex:
             _LOGGER.debug(ex, exc_info=True)
-            raise UpdateFailed("Querying API failed. Error: %s" % ex) from ex
+            raise UpdateFailed(f"Querying API failed. Error: {ex}") from ex
 
         _LOGGER.debug("Current status: %s", str(self._lm.current_status))
         return self._lm

@@ -6,6 +6,7 @@ from typing import Any
 from lmcloud import LMCloud
 from lmcloud.exceptions import BluetoothConnectionFailed
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.components import bluetooth
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_USERNAME
 from homeassistant.core import HomeAssistant
@@ -22,27 +23,30 @@ class LaMarzoccoClient(LMCloud):
 
     def __init__(
         self,
-        hass: HomeAssistant,
-        entry_data: Mapping[str, Any],
+        hass: HomeAssistant | None = None,
+        entry: ConfigEntry | None = None,
         callback_websocket_notify: Callable[[], None] | None = None,
     ) -> None:
         """Initialise the LaMarzocco entity data."""
-        super().__init__(callback_websocket_notify)
-        self._entry_data = entry_data
+        super().__init__(callback_websocket_notify=callback_websocket_notify)
+        self.entry = entry
         self.hass = hass
 
     async def connect(self) -> None:
         """Connect to the machine."""
+        assert self.entry
+        assert self.hass
+
         _LOGGER.debug("Initializing Cloud API")
         await self._init_cloud_api(
-            credentials=self._entry_data,
-            machine_serial=self._entry_data.get(CONF_MACHINE),
+            credentials=self.entry.data,
+            machine_serial=self.entry.data.get(CONF_MACHINE),
         )
         _LOGGER.debug("Model name: %s", self.model_name)
 
-        username: str = self._entry_data.get(CONF_USERNAME, "")
-        mac_address: str = self._entry_data.get(CONF_MAC, "")
-        name: str = self._entry_data.get(CONF_NAME, "")
+        username: str = self.entry.data.get(CONF_USERNAME, "")
+        mac_address: str = self.entry.data.get(CONF_MAC, "")
+        name: str = self.entry.data.get(CONF_NAME, "")
 
         if mac_address and name:
             # coming from discovery
@@ -65,10 +69,21 @@ class LaMarzoccoClient(LMCloud):
             _LOGGER.debug("Connecting to machine with Bluetooth")
             await self.get_hass_bt_client()
 
-        host: str = self._entry_data.get(CONF_HOST, "")
+        host: str = self.entry.data.get(CONF_HOST, "")
         if host:
             _LOGGER.debug("Initializing local API")
             await self._init_local_api(host)
+
+            _LOGGER.debug("Init WebSocket in Background Task")
+            assert self._lm_local_api
+            self.entry.async_create_background_task(
+                hass=self.hass,
+                target=self._lm_local_api.websocket_connect(
+                    callback=self.on_websocket_message_received,
+                    use_sigterm_handler=False,
+                ),
+                name="lm_websocket_task",
+            )
 
     async def update_machine_status(self) -> None:
         """Update the machine status."""
@@ -76,11 +91,7 @@ class LaMarzoccoClient(LMCloud):
             await self.connect()
             self._initialized = True
 
-        elif self._initialized and not self._websocket_initialized:
-            # only initialize websockets after the first update
-            await self._init_websocket()
-
-            await self.update_local_machine_status(force_update=True)
+        await self.update_local_machine_status(force_update=True)
 
     async def set_power(self, enabled: bool) -> bool:
         """Set the power state of the machine."""

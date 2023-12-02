@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DAYS, DOMAIN
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ CONF_SECONDS_OFF = "seconds_off"
 CONF_SECONDS = "seconds"
 CONF_KEY = "key"
 CONF_PULSES = "pulses"
+
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
 class IntegrationService(TypedDict):
