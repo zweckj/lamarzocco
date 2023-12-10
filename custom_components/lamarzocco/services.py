@@ -6,13 +6,14 @@ from collections.abc import Callable
 import logging
 from typing import TypedDict
 
-from lmcloud.const import MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
 import voluptuous as vol  # type: ignore[import]
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+
+from lmcloud.const import LaMarzoccoModel
 
 from .const import DOMAIN
 
@@ -158,7 +159,9 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                     vol.Coerce(int), vol.Range(min=0, max=1000)
                 ),
             },
-            SUPPORTED: [MODEL_GS3_AV],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+            ],
             FUNC: set_dose,
         },
         SERVICE_DOSE_HOT_WATER: {
@@ -167,7 +170,10 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                     vol.Coerce(int), vol.Range(min=0, max=30)
                 ),
             },
-            SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+                LaMarzoccoModel.GS3_MP,
+            ],
             FUNC: set_dose_hot_water,
         },
         SERVICE_AUTO_ON_OFF_ENABLE: {
@@ -175,7 +181,12 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                 vol.Required(CONF_DAY_OF_WEEK): vol.In(DAYS),
                 vol.Required(CONF_ENABLE): cv.boolean,
             },
-            SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+                LaMarzoccoModel.GS3_MP,
+                LaMarzoccoModel.LINEA_MINI,
+                LaMarzoccoModel.LINEA_MICRA,
+            ],
             FUNC: set_auto_on_off_enable,
         },
         SERVICE_AUTO_ON_OFF_TIMES: {
@@ -194,7 +205,12 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                     vol.Coerce(int), vol.Range(min=0, max=59)
                 ),
             },
-            SUPPORTED: [MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+                LaMarzoccoModel.GS3_MP,
+                LaMarzoccoModel.LINEA_MINI,
+                LaMarzoccoModel.LINEA_MICRA,
+            ],
             FUNC: set_auto_on_off_times,
         },
         SERVICE_PREBREW_TIMES: {
@@ -206,7 +222,11 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                     vol.Coerce(float), vol.Range(min=0, max=5.9)
                 ),
             },
-            SUPPORTED: [MODEL_GS3_AV, MODEL_LM, MODEL_LMU],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+                LaMarzoccoModel.LINEA_MINI,
+                LaMarzoccoModel.LINEA_MICRA,
+            ],
             FUNC: set_prebrew_times,
         },
         SERVICE_PREINFUSION_TIME: {
@@ -215,7 +235,11 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
                     vol.Coerce(float), vol.Range(min=0, max=24.9)
                 ),
             },
-            SUPPORTED: [MODEL_GS3_AV, MODEL_LM, MODEL_LMU],
+            SUPPORTED: [
+                LaMarzoccoModel.GS3_AV,
+                LaMarzoccoModel.LINEA_MINI,
+                LaMarzoccoModel.LINEA_MICRA,
+            ],
             FUNC: set_preinfusion_time,
         },
     }
@@ -231,8 +255,12 @@ async def async_setup_services(hass: HomeAssistant, entry: ConfigEntry):
     lm = coordinator.data
 
     # Set the max prebrew button based on model
-    if lm.model_name in [MODEL_GS3_AV, MODEL_LM, MODEL_LMU]:
-        max_button_number = 4 if lm.model_name == MODEL_GS3_AV else 1
+    if lm.model_name in [
+        LaMarzoccoModel.GS3_AV,
+        LaMarzoccoModel.LINEA_MINI,
+        LaMarzoccoModel.LINEA_MICRA,
+    ]:
+        max_button_number = 4 if lm.model_name == LaMarzoccoModel.GS3_AV else 1
         INTEGRATION_SERVICES[SERVICE_PREBREW_TIMES][SCHEMA].update(
             {
                 vol.Required(CONF_KEY): vol.All(

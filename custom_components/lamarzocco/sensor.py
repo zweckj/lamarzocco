@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from lmcloud.const import MODEL_GS3_AV, MODEL_GS3_MP, MODEL_LM, MODEL_LMU
+from lmcloud.const import LaMarzoccoModel
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -66,10 +66,10 @@ ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
         ),
         entity_category=EntityCategory.DIAGNOSTIC,
         extra_attributes={
-            MODEL_GS3_AV: ATTR_MAP_DRINK_STATS_GS3_AV,
-            MODEL_GS3_MP: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
-            MODEL_LM: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
-            MODEL_LMU: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
+            LaMarzoccoModel.GS3_AV: ATTR_MAP_DRINK_STATS_GS3_AV,
+            LaMarzoccoModel.GS3_MP: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
+            LaMarzoccoModel.LINEA_MINI: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
+            LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_DRINK_STATS_GS3_MP_LM,
         },
     ),
     LaMarzoccoSensorEntityDescription(
