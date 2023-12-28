@@ -18,20 +18,13 @@ from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 
-@dataclass
-class LaMarzoccoBinarySensorEntityDescriptionMixin:
-    """Description of an La Marzocco Binary Sensor."""
-
-    is_on_fn: Callable[[LaMarzoccoClient], bool]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoBinarySensorEntityDescription(
     LaMarzoccoEntityDescription,
     BinarySensorEntityDescription,
-    LaMarzoccoBinarySensorEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Binary Sensor."""
+    is_on_fn: Callable[[LaMarzoccoClient], bool]
 
 
 ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
@@ -67,8 +60,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoBinarySensorEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.data.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 

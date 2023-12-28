@@ -14,21 +14,13 @@ from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 
-@dataclass
-class LaMarzoccoButtonEntityDescriptionMixin:
-    """Description of an La Marzocco Button."""
-
-    press_fn: Callable[[LaMarzoccoClient], Coroutine[Any, Any, None]]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoButtonEntityDescription(
     ButtonEntityDescription,
     LaMarzoccoEntityDescription,
-    LaMarzoccoButtonEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Button."""
-
+    press_fn: Callable[[LaMarzoccoClient], Coroutine[Any, Any, None]]
 
 ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
     LaMarzoccoButtonEntityDescription(
@@ -51,8 +43,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoButtonEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.data.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 

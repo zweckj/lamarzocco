@@ -1,6 +1,6 @@
 """Switch platform for La Marzocco espresso machines."""
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from lmcloud.const import LaMarzoccoModel
@@ -74,22 +74,15 @@ ATTR_MAP_PREINFUSION_GS3_AV = [
 ]
 
 
-@dataclass
-class LaMarzoccoSwitchEntityDescriptionMixin:
-    """Description of an La Marzocco Switch."""
-
-    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
-    is_on_fn: Callable[[LaMarzoccoClient], bool]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoSwitchEntityDescription(
     SwitchEntityDescription,
     LaMarzoccoEntityDescription,
-    LaMarzoccoSwitchEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Switch."""
-
+    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
+    is_on_fn: Callable[[LaMarzoccoClient], bool]
+    extra_attributes: dict[str, Any] = field(default_factory=dict)
 
 ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
@@ -100,10 +93,8 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
         is_on_fn=lambda client: client.current_status["power"],
         extra_attributes={
             LaMarzoccoModel.GS3_AV: ATTR_MAP_MAIN_GS3_AV,
-            LaMarzoccoModel.GS3_MP: None,
-            LaMarzoccoModel.LINEA_MINI: None,
-            LaMarzoccoModel.LINEA_MICRA: None,
         },
+        
     ),
     LaMarzoccoSwitchEntityDescription(
         key="auto_on_off",
@@ -131,6 +122,11 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
             LaMarzoccoModel.LINEA_MINI: ATTR_MAP_PREBREW_LM,
             LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_PREBREW_LM,
         },
+        supported_models=(
+            LaMarzoccoModel.GS3_AV,
+            LaMarzoccoModel.LINEA_MINI,
+            LaMarzoccoModel.LINEA_MICRA,
+        ),
     ),
     LaMarzoccoSwitchEntityDescription(
         key="preinfusion",
@@ -144,6 +140,11 @@ ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
             LaMarzoccoModel.LINEA_MINI: ATTR_MAP_PREINFUSION_LM,
             LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_PREINFUSION_LM,
         },
+        supported_models=(
+            LaMarzoccoModel.GS3_AV,
+            LaMarzoccoModel.LINEA_MINI,
+            LaMarzoccoModel.LINEA_MICRA,
+        ),
     ),
     LaMarzoccoSwitchEntityDescription(
         key="steam_boiler_enable",
@@ -167,8 +168,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoSwitchEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.data.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 

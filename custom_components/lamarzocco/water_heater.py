@@ -16,15 +16,19 @@ from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from lmcloud.const import LaMarzoccoModel
+
 from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 OPERATION_MODES = [STATE_ELECTRIC, STATE_OFF]
 
-
-@dataclass
-class LaMarzoccoWaterHeaterEntityDescriptionMixin:
+@dataclass(frozen=True, kw_only=True)
+class LaMarzoccoWaterHeaterEntityDescription(
+    WaterHeaterEntityEntityDescription,
+    LaMarzoccoEntityDescription,
+):
     """Description of an La Marzocco Water Heater."""
 
     min_temp: float
@@ -34,15 +38,6 @@ class LaMarzoccoWaterHeaterEntityDescriptionMixin:
     target_temp_fn: Callable[[LaMarzoccoClient], float | int]
     control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
     set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, bool]]
-
-
-@dataclass
-class LaMarzoccoWaterHeaterEntityDescription(
-    WaterHeaterEntityEntityDescription,
-    LaMarzoccoEntityDescription,
-    LaMarzoccoWaterHeaterEntityDescriptionMixin,
-):
-    """Description of an La Marzocco Water Heater."""
 
 
 ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
@@ -73,6 +68,11 @@ ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         current_temp_fn=lambda client: client.current_status.get("steam_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("steam_set_temp", 0),
+        supported_models=(
+            LaMarzoccoModel.GS3_AV,
+            LaMarzoccoModel.GS3_MP,
+            LaMarzoccoModel.LINEA_MICRA,
+        ),
     ),
 )
 
@@ -88,6 +88,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoWaterHeater(coordinator, hass, description)
         for description in ENTITIES
+        if coordinator.data.model_name in description.supported_models
     )
 
 

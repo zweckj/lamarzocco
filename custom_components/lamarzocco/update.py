@@ -18,22 +18,14 @@ from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 
-@dataclass
-class LaMarzoccoUpdateEntityDescriptionMixin:
-    """Description of an La Marzocco Update."""
-
-    current_fw_fn: Callable[[LaMarzoccoClient], str]
-    latest_fw_fn: Callable[[LaMarzoccoClient], str]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoUpdateEntityDescription(
     UpdateEntityDescription,
     LaMarzoccoEntityDescription,
-    LaMarzoccoUpdateEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Switch."""
-
+    current_fw_fn: Callable[[LaMarzoccoClient], str]
+    latest_fw_fn: Callable[[LaMarzoccoClient], str]
 
 ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
     LaMarzoccoUpdateEntityDescription(
@@ -68,8 +60,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoUpdateEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.data.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 

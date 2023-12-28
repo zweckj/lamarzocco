@@ -1,7 +1,8 @@
 """Sensor platform for La Marzocco espresso machines."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from lmcloud.const import LaMarzoccoModel
 
@@ -32,22 +33,15 @@ ATTR_MAP_DRINK_STATS_GS3_AV = [
 
 ATTR_MAP_DRINK_STATS_GS3_MP_LM = ["drinks_k1", "total_flushing", "total_coffee"]
 
-
-@dataclass
-class LaMarzoccoSensorEntityDescriptionMixin:
-    """Description of an La Marzocco Sensor."""
-
-    available_fn: Callable[[LaMarzoccoClient], bool]
-    value_fn: Callable[[LaMarzoccoClient], float | int]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoSensorEntityDescription(
     SensorEntityDescription,
     LaMarzoccoEntityDescription,
-    LaMarzoccoSensorEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Sensor."""
+    available_fn: Callable[[LaMarzoccoClient], bool]
+    value_fn: Callable[[LaMarzoccoClient], float | int]
+    extra_attributes: dict[str, Any] = field(default_factory=dict)
 
 
 ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
@@ -98,8 +92,7 @@ async def async_setup_entry(
     async_add_entities(
         LaMarzoccoSensorEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.data.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 

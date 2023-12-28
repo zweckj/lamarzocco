@@ -8,18 +8,24 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from lmcloud.const import LaMarzoccoModel
+
 from .const import DOMAIN
 from .coordinator import LmApiCoordinator
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoEntityDescription(EntityDescription):
     """Description for all LM entities."""
 
-    extra_attributes: dict[str, Any] = field(default_factory=dict)
+    supported_models: tuple[LaMarzoccoModel, ...] = (
+        LaMarzoccoModel.GS3_AV,
+        LaMarzoccoModel.GS3_MP,
+        LaMarzoccoModel.LINEA_MICRA,
+        LaMarzoccoModel.LINEA_MINI,
+    )
 
 
-@dataclass
 class LaMarzoccoEntity(CoordinatorEntity[LmApiCoordinator]):
     """Common elements for all entities."""
 
@@ -51,6 +57,8 @@ class LaMarzoccoEntity(CoordinatorEntity[LmApiCoordinator]):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the extra state attributes."""
+        if not hasattr(self.entity_description, "extra_attributes"):
+            return {}
 
         def bool_to_str(value: bool | str) -> str:
             """Convert boolean values to strings to improve display in Lovelace."""
