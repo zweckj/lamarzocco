@@ -22,6 +22,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/zweckj/lamarzocco/issues",
   "loggers": ["lmcloud"],
-  "requirements": ["lmcloud==0.4.17"],
+  "requirements": ["lmcloud==0.4.18"],
   "version": "0.13.2"
 }

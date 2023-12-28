@@ -71,6 +71,7 @@ ENTITIES: tuple[LaMarzoccoSensorEntityDescription, ...] = (
         translation_key="shot_timer",
         icon="mdi:timer",
         native_unit_of_measurement="s",
+        suggested_display_precision=1,
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.DURATION,
         available_fn=lambda client: client.current_status.get("brew_active_duration")
