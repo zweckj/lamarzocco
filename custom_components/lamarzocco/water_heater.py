@@ -16,15 +16,19 @@ from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from lmcloud.const import LaMarzoccoModel
+
 from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 OPERATION_MODES = [STATE_ELECTRIC, STATE_OFF]
 
-
-@dataclass
-class LaMarzoccoWaterHeaterEntityDescriptionMixin:
+@dataclass(frozen=True, kw_only=True)
+class LaMarzoccoWaterHeaterEntityDescription(
+    WaterHeaterEntityEntityDescription,
+    LaMarzoccoEntityDescription,
+):
     """Description of an La Marzocco Water Heater."""
 
     min_temp: float
@@ -32,17 +36,8 @@ class LaMarzoccoWaterHeaterEntityDescriptionMixin:
     current_op_fn: Callable[[LaMarzoccoClient], bool]
     current_temp_fn: Callable[[LaMarzoccoClient], float | int]
     target_temp_fn: Callable[[LaMarzoccoClient], float | int]
-    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, None]]
-    set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, None]]
-
-
-@dataclass
-class LaMarzoccoWaterHeaterEntityDescription(
-    WaterHeaterEntityEntityDescription,
-    LaMarzoccoEntityDescription,
-    LaMarzoccoWaterHeaterEntityDescriptionMixin,
-):
-    """Description of an La Marzocco Water Heater."""
+    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
+    set_temp_fn: Callable[[LaMarzoccoClient, float | int], Coroutine[Any, Any, bool]]
 
 
 ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
@@ -86,10 +81,9 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoWaterHeater(coordinator, config_entry, description)
+        LaMarzoccoWaterHeater(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.lm.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 
@@ -98,24 +92,15 @@ class LaMarzoccoWaterHeater(LaMarzoccoEntity, WaterHeaterEntity):
 
     entity_description: LaMarzoccoWaterHeaterEntityDescription
 
-    @property
-    def supported_features(self) -> WaterHeaterEntityFeature:
-        """Return the list of supported features."""
-        return (
-            WaterHeaterEntityFeature.TARGET_TEMPERATURE
-            | WaterHeaterEntityFeature.ON_OFF
-            | WaterHeaterEntityFeature.OPERATION_MODE
-        )
+    _attr_supported_features = (
+        WaterHeaterEntityFeature.TARGET_TEMPERATURE
+        | WaterHeaterEntityFeature.ON_OFF
+        | WaterHeaterEntityFeature.OPERATION_MODE
+    )
 
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement used by the platform."""
-        return UnitOfTemperature.CELSIUS
-
-    @property
-    def precision(self) -> float:
-        """Return the precision of the platform."""
-        return PRECISION_TENTHS
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_precision = PRECISION_TENTHS
+    _attr_operation_list = OPERATION_MODES
 
     @property
     def current_temperature(self) -> float | None:
@@ -138,11 +123,6 @@ class LaMarzoccoWaterHeater(LaMarzoccoEntity, WaterHeaterEntity):
         return self.entity_description.max_temp
 
     @property
-    def operation_list(self) -> list[str] | None:
-        """Return the list of available operation modes."""
-        return OPERATION_MODES
-
-    @property
     def current_operation(self) -> str | None:
         """Return current operation."""
         return (
@@ -157,17 +137,17 @@ class LaMarzoccoWaterHeater(LaMarzoccoEntity, WaterHeaterEntity):
         await self.entity_description.set_temp_fn(
             self._lm_client, round(temperature, 1)
         )
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the water heater on."""
         await self.entity_description.control_fn(self._lm_client, True)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the water heater off."""
         await self.entity_description.control_fn(self._lm_client, False)
-        await self._update_ha_state()
+        self.async_write_ha_state()
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set the operation mode."""

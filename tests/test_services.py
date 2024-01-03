@@ -1,11 +1,13 @@
 """Test the LaMarzocco services."""
 from unittest.mock import MagicMock
 
-from lmcloud.exceptions import RequestNotSuccessful
 import pytest
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from lmcloud.exceptions import RequestNotSuccessful
 
-from homeassistant.components.lamarzocco.const import DOMAIN
-from homeassistant.components.lamarzocco.services import (
+from custom_components.lamarzocco.const import DOMAIN
+from custom_components.lamarzocco.services import (
     CONF_DAY_OF_WEEK,
     CONF_ENABLE,
     CONF_HOUR_OFF,
@@ -24,8 +26,6 @@ from homeassistant.components.lamarzocco.services import (
     SERVICE_PREBREW_TIMES,
     SERVICE_PREINFUSION_TIME,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 
 pytestmark = pytest.mark.usefixtures("init_integration")
 

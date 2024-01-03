@@ -4,15 +4,15 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from homeassistant.components.lamarzocco.const import DOMAIN
 from homeassistant.components.water_heater import (
     ATTR_CURRENT_TEMPERATURE,
     ATTR_MAX_TEMP,
     ATTR_MIN_TEMP,
     ATTR_OPERATION_LIST,
     ATTR_OPERATION_MODE,
-    DOMAIN as WATER_HEATER_DOMAIN,
+)
+from homeassistant.components.water_heater import DOMAIN as WATER_HEATER_DOMAIN
+from homeassistant.components.water_heater import (
     SERVICE_SET_OPERATION_MODE,
     SERVICE_SET_TEMPERATURE,
     SERVICE_TURN_OFF,
@@ -28,7 +28,10 @@ from homeassistant.const import (
     ATTR_TEMPERATURE,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.lamarzocco.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("init_integration")
 
@@ -71,7 +74,12 @@ async def test_coffee_boiler(
     assert device.name == "GS01234"
     assert device.sw_version == "1.1"
 
-    # on/off service calls
+
+async def test_coffee_boiler_turn_off(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test turning off the La Marzocco Coffee Boiler."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_TURN_OFF,
@@ -84,6 +92,12 @@ async def test_coffee_boiler(
     assert len(mock_lamarzocco.set_power.mock_calls) == 1
     mock_lamarzocco.set_power.assert_called_once_with(enabled=False)
 
+
+async def test_coffee_boiler_turn_on(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test turning on the La Marzocco Coffee Boiler."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_TURN_ON,
@@ -93,10 +107,15 @@ async def test_coffee_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_power.mock_calls) == 2
+    assert len(mock_lamarzocco.set_power.mock_calls) == 1
     mock_lamarzocco.set_power.assert_called_with(enabled=True)
 
-    # temp service calls
+
+async def test_coffee_boiler_set_temp(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test setting the La Marzocco Coffee Boiler temperature."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_TEMPERATURE,
@@ -110,7 +129,12 @@ async def test_coffee_boiler(
     assert len(mock_lamarzocco.set_coffee_temp.mock_calls) == 1
     mock_lamarzocco.set_coffee_temp.assert_called_once_with(temperature=96)
 
-    # operation service calls
+
+async def test_coffee_boiler_set_state_electric(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test setting the La Marzocco Coffee Boiler state to electric."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_OPERATION_MODE,
@@ -121,9 +145,15 @@ async def test_coffee_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_power.mock_calls) == 3
+    assert len(mock_lamarzocco.set_power.mock_calls) == 1
     mock_lamarzocco.set_power.assert_called_with(enabled=True)
 
+
+async def test_coffee_boiler_set_state_off(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test setting the La Marzocco Coffee Boiler state to off."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_OPERATION_MODE,
@@ -134,11 +164,11 @@ async def test_coffee_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_power.mock_calls) == 4
+    assert len(mock_lamarzocco.set_power.mock_calls) == 1
     mock_lamarzocco.set_power.assert_called_with(enabled=False)
 
 
-async def test_steam_boiler(
+async def test_steam_boiler_state(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
     device_registry: dr.DeviceRegistry,
@@ -176,7 +206,11 @@ async def test_steam_boiler(
     assert device.name == "GS01234"
     assert device.sw_version == "1.1"
 
-    # on/off service calls
+
+async def test_steam_boiler_turn_off(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test turning off the La Marzocco Steam Boiler."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_TURN_OFF,
@@ -189,6 +223,11 @@ async def test_steam_boiler(
     assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 1
     mock_lamarzocco.set_steam_boiler_enable.assert_called_once_with(enable=False)
 
+
+async def test_steam_boiler_turn_on(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test turning on the La Marzocco Steam Boiler."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_TURN_ON,
@@ -198,10 +237,14 @@ async def test_steam_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 2
+    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 1
     mock_lamarzocco.set_steam_boiler_enable.assert_called_with(enable=True)
 
-    # temp service calls
+
+async def test_steam_boiler_set_temp(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test setting the La Marzocco Steam Boiler temperature."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_TEMPERATURE,
@@ -215,7 +258,11 @@ async def test_steam_boiler(
     assert len(mock_lamarzocco.set_steam_temp.mock_calls) == 1
     mock_lamarzocco.set_steam_temp.assert_called_once_with(temperature=131)
 
-    # operation service calls
+
+async def test_steam_boiler_set_operation_mode_electric(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test setting the La Marzocco Steam Boiler state to electric."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_OPERATION_MODE,
@@ -226,9 +273,14 @@ async def test_steam_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 3
+    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 1
     mock_lamarzocco.set_steam_boiler_enable.assert_called_with(enable=True)
 
+
+async def test_steam_boiler_set_operation_mode_off(
+    hass: HomeAssistant, mock_lamarzocco: MagicMock
+) -> None:
+    """Test setting the La Marzocco Steam Boiler state to off."""
     await hass.services.async_call(
         WATER_HEATER_DOMAIN,
         SERVICE_SET_OPERATION_MODE,
@@ -239,5 +291,5 @@ async def test_steam_boiler(
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 4
+    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 1
     mock_lamarzocco.set_steam_boiler_enable.assert_called_with(enable=False)

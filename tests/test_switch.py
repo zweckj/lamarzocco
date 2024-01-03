@@ -2,19 +2,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from homeassistant.components.lamarzocco.const import DOMAIN
-from homeassistant.components.lamarzocco.switch import (
-    ATTR_MAP_AUTO_ON_OFF,
-    ATTR_MAP_MAIN_GS3_AV,
-    ATTR_MAP_PREBREW_GS3_AV,
-    ATTR_MAP_PREINFUSION_GS3_AV,
-)
-from homeassistant.components.switch import (
-    DOMAIN as SWITCH_DOMAIN,
-    SERVICE_TURN_OFF,
-    SERVICE_TURN_ON,
-)
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.components.switch import SERVICE_TURN_OFF, SERVICE_TURN_ON
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
     ATTR_ENTITY_ID,
@@ -24,7 +13,16 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.lamarzocco.const import DOMAIN
+from custom_components.lamarzocco.switch import (
+    ATTR_MAP_AUTO_ON_OFF,
+    ATTR_MAP_MAIN_GS3_AV,
+    ATTR_MAP_PREBREW_GS3_AV,
+    ATTR_MAP_PREINFUSION_GS3_AV,
+)
 
 pytestmark = pytest.mark.usefixtures("init_integration")
 

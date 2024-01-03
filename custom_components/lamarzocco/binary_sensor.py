@@ -13,25 +13,18 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import BREW_ACTIVE, DOMAIN
+from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
 from .lm_client import LaMarzoccoClient
 
 
-@dataclass
-class LaMarzoccoBinarySensorEntityDescriptionMixin:
-    """Description of an La Marzocco Binary Sensor."""
-
-    is_on_fn: Callable[[LaMarzoccoClient], bool]
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class LaMarzoccoBinarySensorEntityDescription(
     LaMarzoccoEntityDescription,
     BinarySensorEntityDescription,
-    LaMarzoccoBinarySensorEntityDescriptionMixin,
 ):
     """Description of an La Marzocco Binary Sensor."""
+    is_on_fn: Callable[[LaMarzoccoClient], bool]
 
 
 ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
@@ -46,11 +39,11 @@ ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     LaMarzoccoBinarySensorEntityDescription(
-        key=BREW_ACTIVE,
-        translation_key=BREW_ACTIVE,
+        key="brew_active",
+        translation_key="brew_active",
         device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:cup-water",
-        is_on_fn=lambda client: bool(client.current_status.get(BREW_ACTIVE)),
+        is_on_fn=lambda client: bool(client.current_status.get("brew_active")),
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
@@ -65,10 +58,9 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoBinarySensorEntity(coordinator, config_entry, description)
+        LaMarzoccoBinarySensorEntity(coordinator, hass, description)
         for description in ENTITIES
-        if not description.extra_attributes
-        or coordinator.lm.model_name in description.extra_attributes
+        if coordinator.data.model_name in description.supported_models
     )
 
 
