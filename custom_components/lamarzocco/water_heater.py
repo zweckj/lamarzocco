@@ -68,11 +68,6 @@ ENTITIES: tuple[LaMarzoccoWaterHeaterEntityDescription, ...] = (
         control_fn=lambda client, state: client.set_steam_boiler_enable(state),
         current_temp_fn=lambda client: client.current_status.get("steam_temp", 0),
         target_temp_fn=lambda client: client.current_status.get("steam_set_temp", 0),
-        supported_models=(
-            LaMarzoccoModel.GS3_AV,
-            LaMarzoccoModel.GS3_MP,
-            LaMarzoccoModel.LINEA_MICRA,
-        ),
     ),
 )
 
