@@ -15,13 +15,13 @@
       "local_name": "GS3AV_*"
     }
   ],
-  "codeowners": ["@rccoleman", "@zweckj"],
+  "codeowners": ["@zweckj"],
   "config_flow": true,
   "dependencies": ["bluetooth_adapters"],
-  "documentation": "https://github.com/zweckj/lamarzocco",
+  "documentation": "https://www.home-assistant.io/integrations/lamarzocco",
+  "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/zweckj/lamarzocco/issues",
   "loggers": ["lmcloud"],
-  "requirements": ["lmcloud==0.4.20"],
-  "version": "0.13.2"
+  "requirements": ["lmcloud==1.0.0b13"],
+  "version": "core-preview"
 }

@@ -1,72 +1,68 @@
 """Base class for the La Marzocco entities."""
 
-from dataclasses import dataclass, field
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
 
-from homeassistant.core import HomeAssistant
+from lmcloud.const import FirmwareType
+from lmcloud.lm_machine import LaMarzoccoMachine
+
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from lmcloud.const import LaMarzoccoModel
-
 from .const import DOMAIN
-from .coordinator import LmApiCoordinator
+from .coordinator import LaMarzoccoMachineUpdateCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoEntityDescription(EntityDescription):
     """Description for all LM entities."""
 
-    supported_models: tuple[LaMarzoccoModel, ...] = (
-        LaMarzoccoModel.GS3_AV,
-        LaMarzoccoModel.GS3_MP,
-        LaMarzoccoModel.LINEA_MICRA,
-        LaMarzoccoModel.LINEA_MINI,
-    )
+    available_fn: Callable[[LaMarzoccoMachine], bool] = lambda _: True
+    supported_fn: Callable[[LaMarzoccoMachineUpdateCoordinator], bool] = lambda _: True
 
 
-class LaMarzoccoEntity(CoordinatorEntity[LmApiCoordinator]):
+class LaMarzoccoBaseEntity(CoordinatorEntity[LaMarzoccoMachineUpdateCoordinator]):
     """Common elements for all entities."""
 
-    entity_description: LaMarzoccoEntityDescription
-    _attr_has_entity_name: bool = True
+    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: LmApiCoordinator,
-        hass: HomeAssistant,
-        entity_description: LaMarzoccoEntityDescription,
+        coordinator: LaMarzoccoMachineUpdateCoordinator,
+        key: str,
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
-        self._hass = hass
-        self.entity_description = entity_description
-        self._lm_client = self.coordinator.data
-        self._attr_unique_id = (
-            f"{self._lm_client.serial_number}_{self.entity_description.key}"
-        )
+        device = coordinator.device
+        self._attr_unique_id = f"{device.serial_number}_{key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._lm_client.serial_number)},
-            name=self._lm_client.machine_name,
+            identifiers={(DOMAIN, device.serial_number)},
+            name=device.name,
             manufacturer="La Marzocco",
-            model=self._lm_client.true_model_name,
-            sw_version=self._lm_client.firmware_version,
+            model=device.full_model_name,
+            serial_number=device.serial_number,
+            sw_version=device.firmware[FirmwareType.MACHINE].current_version,
         )
+
+
+class LaMarzoccoEntity(LaMarzoccoBaseEntity):
+    """Common elements for all entities."""
+
+    entity_description: LaMarzoccoEntityDescription
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the extra state attributes."""
-        if not hasattr(self.entity_description, "extra_attributes"):
-            return {}
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return super().available and self.entity_description.available_fn(
+            self.coordinator.device
+        )
 
-        def bool_to_str(value: bool | str) -> str:
-            """Convert boolean values to strings to improve display in Lovelace."""
-            return str(value) if isinstance(value, bool) else value
-
-        data = self._lm_client.current_status
-        keys = self.entity_description.extra_attributes.get(self._lm_client.model_name)
-        if keys is None:
-            return {}
-
-        return {key: bool_to_str(data[key]) for key in keys if key in data}
+    def __init__(
+        self,
+        coordinator: LaMarzoccoMachineUpdateCoordinator,
+        entity_description: LaMarzoccoEntityDescription,
+    ) -> None:
+        """Initialize the entity."""
+        super().__init__(coordinator, entity_description.key)
+        self.entity_description = entity_description

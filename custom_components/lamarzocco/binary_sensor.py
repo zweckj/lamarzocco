@@ -3,6 +3,8 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from lmcloud.lm_machine import LaMarzoccoMachine
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -15,7 +17,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
-from .lm_client import LaMarzoccoClient
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -23,27 +24,26 @@ class LaMarzoccoBinarySensorEntityDescription(
     LaMarzoccoEntityDescription,
     BinarySensorEntityDescription,
 ):
-    """Description of an La Marzocco Binary Sensor."""
-    is_on_fn: Callable[[LaMarzoccoClient], bool]
+    """Description of a La Marzocco binary sensor."""
+
+    is_on_fn: Callable[[LaMarzoccoMachine], bool]
 
 
 ENTITIES: tuple[LaMarzoccoBinarySensorEntityDescription, ...] = (
     LaMarzoccoBinarySensorEntityDescription(
-        key="water_reservoir",
-        translation_key="water_reservoir",
+        key="water_tank",
+        translation_key="water_tank",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        icon="mdi:water-well",
-        is_on_fn=lambda client: not client.current_status.get(
-            "water_reservoir_contact"
-        ),
+        is_on_fn=lambda device: not device.config.water_contact,
         entity_category=EntityCategory.DIAGNOSTIC,
+        supported_fn=lambda coordinator: coordinator.local_connection_configured,
     ),
     LaMarzoccoBinarySensorEntityDescription(
         key="brew_active",
         translation_key="brew_active",
         device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:cup-water",
-        is_on_fn=lambda client: bool(client.current_status.get("brew_active")),
+        is_on_fn=lambda device: device.config.brew_active,
+        available_fn=lambda device: device.websocket_connected,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
@@ -58,9 +58,9 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities(
-        LaMarzoccoBinarySensorEntity(coordinator, hass, description)
+        LaMarzoccoBinarySensorEntity(coordinator, description)
         for description in ENTITIES
-        if coordinator.data.model_name in description.supported_models
+        if description.supported_fn(coordinator)
     )
 
 
@@ -72,4 +72,4 @@ class LaMarzoccoBinarySensorEntity(LaMarzoccoEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the binary sensor is on."""
-        return self.entity_description.is_on_fn(self._lm_client)
+        return self.entity_description.is_on_fn(self.coordinator.device)

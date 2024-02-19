@@ -4,6 +4,8 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
+from lmcloud.lm_machine import LaMarzoccoMachine
+
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,23 +13,23 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
-from .lm_client import LaMarzoccoClient
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoButtonEntityDescription(
-    ButtonEntityDescription,
     LaMarzoccoEntityDescription,
+    ButtonEntityDescription,
 ):
-    """Description of an La Marzocco Button."""
-    press_fn: Callable[[LaMarzoccoClient], Coroutine[Any, Any, None]]
+    """Description of a La Marzocco button."""
+
+    press_fn: Callable[[LaMarzoccoMachine], Coroutine[Any, Any, None]]
+
 
 ENTITIES: tuple[LaMarzoccoButtonEntityDescription, ...] = (
     LaMarzoccoButtonEntityDescription(
         key="start_backflush",
         translation_key="start_backflush",
-        icon="mdi:water-sync",
-        press_fn=lambda client: client.start_backflush(),
+        press_fn=lambda lm: lm.start_backflush(),
     ),
 )
 
@@ -37,22 +39,21 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up button entities and services."""
+    """Set up button entities."""
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoButtonEntity(coordinator, hass, description)
+        LaMarzoccoButtonEntity(coordinator, description)
         for description in ENTITIES
-        if coordinator.data.model_name in description.supported_models
+        if description.supported_fn(coordinator)
     )
 
 
 class LaMarzoccoButtonEntity(LaMarzoccoEntity, ButtonEntity):
-    """Button supporting backflush."""
+    """La Marzocco Button Entity."""
 
     entity_description: LaMarzoccoButtonEntityDescription
 
-    async def async_press(self, **kwargs) -> None:
+    async def async_press(self) -> None:
         """Press button."""
-        await self.entity_description.press_fn(self._lm_client)
-        self.async_write_ha_state()
+        await self.entity_description.press_fn(self.coordinator.device)

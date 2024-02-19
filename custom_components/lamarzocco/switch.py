@@ -1,9 +1,10 @@
 """Switch platform for La Marzocco espresso machines."""
+
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from lmcloud.const import LaMarzoccoModel
+from lmcloud.const import BoilerType
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -12,147 +13,50 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .coordinator import LaMarzoccoMachineUpdateCoordinator
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
-from .lm_client import LaMarzoccoClient
-
-ATTR_MAP_MAIN_GS3_AV = [
-    "dose_k1",
-    "dose_k2",
-    "dose_k3",
-    "dose_k4",
-    "dose_k5",
-]
-
-ATTR_MAP_AUTO_ON_OFF = [
-    "mon_auto",
-    "mon_on_time",
-    "mon_off_time",
-    "tue_auto",
-    "tue_on_time",
-    "tue_off_time",
-    "wed_auto",
-    "wed_on_time",
-    "wed_off_time",
-    "thu_auto",
-    "thu_on_time",
-    "thu_off_time",
-    "fri_auto",
-    "fri_on_time",
-    "fri_off_time",
-    "sat_auto",
-    "sat_on_time",
-    "sat_off_time",
-    "sun_auto",
-    "sun_on_time",
-    "sun_off_time",
-]
-
-ATTR_MAP_PREBREW_GS3_AV = [
-    "prebrewing_ton_k1",
-    "prebrewing_toff_k1",
-    "prebrewing_ton_k2",
-    "prebrewing_toff_k2",
-    "prebrewing_ton_k3",
-    "prebrewing_toff_k3",
-    "prebrewing_ton_k4",
-    "prebrewing_toff_k4",
-]
-
-ATTR_MAP_PREBREW_LM = [
-    "prebrewing_ton_k1",
-    "prebrewing_toff_k1",
-]
-
-ATTR_MAP_PREINFUSION_LM = [
-    "preinfusion_k1",
-]
-ATTR_MAP_PREINFUSION_GS3_AV = [
-    "preinfusion_k1",
-    "preinfusion_k2",
-    "preinfusion_k3",
-    "preinfusion_k4",
-]
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoSwitchEntityDescription(
-    SwitchEntityDescription,
     LaMarzoccoEntityDescription,
+    SwitchEntityDescription,
 ):
-    """Description of an La Marzocco Switch."""
-    control_fn: Callable[[LaMarzoccoClient, bool], Coroutine[Any, Any, bool]]
-    is_on_fn: Callable[[LaMarzoccoClient], bool]
-    extra_attributes: dict[str, Any] = field(default_factory=dict)
+    """Description of a La Marzocco Switch."""
+
+    control_fn: Callable[
+        [LaMarzoccoMachineUpdateCoordinator, bool], Coroutine[Any, Any, bool]
+    ]
+    is_on_fn: Callable[[LaMarzoccoMachineUpdateCoordinator], bool]
+
 
 ENTITIES: tuple[LaMarzoccoSwitchEntityDescription, ...] = (
     LaMarzoccoSwitchEntityDescription(
         key="main",
         translation_key="main",
-        icon="mdi:power",
-        control_fn=lambda client, state: client.set_power(state),
-        is_on_fn=lambda client: client.current_status["power"],
-        extra_attributes={
-            LaMarzoccoModel.GS3_AV: ATTR_MAP_MAIN_GS3_AV,
-        },
-        
+        name=None,
+        control_fn=lambda coordinator, state: coordinator.device.set_power(
+            state, coordinator.async_get_ble_device()
+        ),
+        is_on_fn=lambda coordinator: coordinator.device.config.turned_on,
     ),
     LaMarzoccoSwitchEntityDescription(
         key="auto_on_off",
         translation_key="auto_on_off",
-        icon="mdi:alarm",
-        control_fn=lambda client, state: client.set_auto_on_off_global(state),
-        is_on_fn=lambda client: client.current_status["global_auto"] == "Enabled",
+        control_fn=lambda coordinator,
+        enabled: coordinator.device.enable_schedule_globally(enabled),
+        is_on_fn=lambda coordinator: coordinator.device.config.auto_on_off_schedule.enabled,
         entity_category=EntityCategory.CONFIG,
-        extra_attributes={
-            LaMarzoccoModel.GS3_AV: ATTR_MAP_AUTO_ON_OFF,
-            LaMarzoccoModel.GS3_MP: ATTR_MAP_AUTO_ON_OFF,
-            LaMarzoccoModel.LINEA_MINI: ATTR_MAP_AUTO_ON_OFF,
-            LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_AUTO_ON_OFF,
-        },
-    ),
-    LaMarzoccoSwitchEntityDescription(
-        key="prebrew",
-        translation_key="prebrew",
-        icon="mdi:water",
-        control_fn=lambda client, state: client.set_prebrew(state),
-        is_on_fn=lambda client: client.current_status["enable_prebrewing"],
-        entity_category=EntityCategory.CONFIG,
-        extra_attributes={
-            LaMarzoccoModel.GS3_AV: ATTR_MAP_PREBREW_GS3_AV,
-            LaMarzoccoModel.LINEA_MINI: ATTR_MAP_PREBREW_LM,
-            LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_PREBREW_LM,
-        },
-        supported_models=(
-            LaMarzoccoModel.GS3_AV,
-            LaMarzoccoModel.LINEA_MINI,
-            LaMarzoccoModel.LINEA_MICRA,
-        ),
-    ),
-    LaMarzoccoSwitchEntityDescription(
-        key="preinfusion",
-        translation_key="preinfusion",
-        icon="mdi:water",
-        control_fn=lambda client, state: client.set_preinfusion(state),
-        is_on_fn=lambda client: client.current_status["enable_preinfusion"],
-        entity_category=EntityCategory.CONFIG,
-        extra_attributes={
-            LaMarzoccoModel.GS3_AV: ATTR_MAP_PREINFUSION_GS3_AV,
-            LaMarzoccoModel.LINEA_MINI: ATTR_MAP_PREINFUSION_LM,
-            LaMarzoccoModel.LINEA_MICRA: ATTR_MAP_PREINFUSION_LM,
-        },
-        supported_models=(
-            LaMarzoccoModel.GS3_AV,
-            LaMarzoccoModel.LINEA_MINI,
-            LaMarzoccoModel.LINEA_MICRA,
-        ),
     ),
     LaMarzoccoSwitchEntityDescription(
         key="steam_boiler_enable",
-        translation_key="steam_boiler_enable",
-        icon="mdi:water-boiler",
-        control_fn=lambda client, state: client.set_steam_boiler_enable(state),
-        is_on_fn=lambda client: client.current_status["steam_boiler_enable"],
-        entity_category=EntityCategory.CONFIG,
+        translation_key="steam_boiler",
+        control_fn=lambda coordinator, state: coordinator.device.set_steam(
+            state, coordinator.async_get_ble_device()
+        ),
+        is_on_fn=lambda coordinator: coordinator.device.config.boilers[
+            BoilerType.STEAM
+        ].enabled,
     ),
 )
 
@@ -166,9 +70,9 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     async_add_entities(
-        LaMarzoccoSwitchEntity(coordinator, hass, description)
+        LaMarzoccoSwitchEntity(coordinator, description)
         for description in ENTITIES
-        if coordinator.data.model_name in description.supported_models
+        if description.supported_fn(coordinator)
     )
 
 
@@ -179,15 +83,15 @@ class LaMarzoccoSwitchEntity(LaMarzoccoEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn device on."""
-        await self.entity_description.control_fn(self._lm_client, True)
+        await self.entity_description.control_fn(self.coordinator, True)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn device off."""
-        await self.entity_description.control_fn(self._lm_client, False)
+        await self.entity_description.control_fn(self.coordinator, False)
         self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool:
         """Return true if device is on."""
-        return self.entity_description.is_on_fn(self._lm_client)
+        return self.entity_description.is_on_fn(self.coordinator)
