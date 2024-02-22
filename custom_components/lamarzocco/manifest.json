@@ -23,5 +23,5 @@
   "iot_class": "cloud_polling",
   "loggers": ["lmcloud"],
   "requirements": ["lmcloud==1.0.0b13"],
-  "version": "core-preview"
+  "version": "0.0.1"
 }
