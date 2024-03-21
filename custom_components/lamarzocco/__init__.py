@@ -2,11 +2,9 @@
 
 import logging
 
-from lmcloud.client_bluetooth import LaMarzoccoBluetoothClient
 from lmcloud.client_cloud import LaMarzoccoCloudClient
 from lmcloud.exceptions import AuthFail, RequestNotSuccessful
 
-from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -20,13 +18,12 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_USE_BLUETOOTH, DOMAIN
+from .const import DOMAIN
 from .coordinator import LaMarzoccoMachineUpdateCoordinator
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
-    Platform.CALENDAR,
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
@@ -39,27 +36,6 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up La Marzocco as config entry."""
-
-    if entry.data.get(CONF_USE_BLUETOOTH, True):
-        assert entry.unique_id
-
-        # check if there are any bluetooth adapters to use
-        count = bluetooth.async_scanner_count(hass, connectable=True)
-        if count > 0:
-            _LOGGER.debug("Found Bluetooth adapters, initializing with Bluetooth")
-            bt_devices = await LaMarzoccoBluetoothClient.discover_devices(
-                scanner=bluetooth.async_get_scanner(hass)
-            )
-            for bt_device in bt_devices:
-                if bt_device.name is not None and entry.unique_id in bt_device.name:
-                    # found a device, add MAC address to config entry
-                    _LOGGER.debug("Found Bluetooth device %s", bt_device.name)
-                    new_data = entry.data.copy()
-                    new_data[CONF_MAC] = bt_device.address
-                    hass.config_entries.async_update_entry(
-                        entry,
-                        data=new_data,
-                    )
 
     coordinator = LaMarzoccoMachineUpdateCoordinator(hass)
 

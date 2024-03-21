@@ -70,7 +70,7 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
         native_min_value=85,
         native_max_value=104,
         set_value_fn=lambda coordinator, temp: coordinator.device.set_temp(
-            BoilerType.COFFEE, temp, coordinator.async_get_ble_device()
+            BoilerType.COFFEE, temp
         ),
         native_value_fn=lambda device: device.config.boilers[
             BoilerType.COFFEE
@@ -85,7 +85,7 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
         native_min_value=126,
         native_max_value=131,
         set_value_fn=lambda coordinator, temp: coordinator.device.set_temp(
-            BoilerType.STEAM, temp, coordinator.async_get_ble_device()
+            BoilerType.STEAM, temp
         ),
         native_value_fn=lambda device: device.config.boilers[
             BoilerType.STEAM
