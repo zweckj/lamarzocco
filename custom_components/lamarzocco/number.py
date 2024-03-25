@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic
 
 from lmcloud.const import (
     KEYS_PER_MODEL,
@@ -12,6 +12,7 @@ from lmcloud.const import (
     PrebrewMode,
 )
 from lmcloud.lm_machine import LaMarzoccoMachine
+from lmcloud.models import LaMarzoccoMachineConfig
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -30,38 +31,38 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import LaMarzoccoMachineUpdateCoordinator
-from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .coordinator import LaMarzoccoMachineUpdateCoordinator, _DeviceT
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription, _ConfigT
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoNumberEntityDescription(
     LaMarzoccoEntityDescription,
     NumberEntityDescription,
+    Generic[_DeviceT, _ConfigT],
 ):
     """Description of a La Marzocco number entity."""
 
-    native_value_fn: Callable[[LaMarzoccoMachine], float | int]
-    set_value_fn: Callable[
-        [LaMarzoccoMachineUpdateCoordinator, float | int], Coroutine[Any, Any, bool]
-    ]
+    native_value_fn: Callable[[_ConfigT], float | int]
+    set_value_fn: Callable[[_DeviceT, float | int], Coroutine[Any, Any, bool]]
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoKeyNumberEntityDescription(
     LaMarzoccoEntityDescription,
     NumberEntityDescription,
+    Generic[_DeviceT, _ConfigT],
 ):
     """Description of an La Marzocco number entity with keys."""
 
-    native_value_fn: Callable[[LaMarzoccoMachine, PhysicalKey], float | int]
+    native_value_fn: Callable[[_ConfigT, PhysicalKey], float | int]
     set_value_fn: Callable[
-        [LaMarzoccoMachine, float | int, PhysicalKey], Coroutine[Any, Any, bool]
+        [_DeviceT, float | int, PhysicalKey], Coroutine[Any, Any, bool]
     ]
 
 
 ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
-    LaMarzoccoNumberEntityDescription(
+    LaMarzoccoNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="coffee_temp",
         translation_key="coffee_temp",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -69,14 +70,12 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
         native_step=PRECISION_TENTHS,
         native_min_value=85,
         native_max_value=104,
-        set_value_fn=lambda coordinator, temp: coordinator.device.set_temp(
-            BoilerType.COFFEE, temp
-        ),
-        native_value_fn=lambda device: device.config.boilers[
+        set_value_fn=lambda machine, temp: machine.set_temp(BoilerType.COFFEE, temp),
+        native_value_fn=lambda config: config.boilers[
             BoilerType.COFFEE
         ].target_temperature,
     ),
-    LaMarzoccoNumberEntityDescription(
+    LaMarzoccoNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="steam_temp",
         translation_key="steam_temp",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -84,10 +83,8 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
         native_step=PRECISION_WHOLE,
         native_min_value=126,
         native_max_value=131,
-        set_value_fn=lambda coordinator, temp: coordinator.device.set_temp(
-            BoilerType.STEAM, temp
-        ),
-        native_value_fn=lambda device: device.config.boilers[
+        set_value_fn=lambda machine, temp: machine.set_temp(BoilerType.STEAM, temp),
+        native_value_fn=lambda config: config.boilers[
             BoilerType.STEAM
         ].target_temperature,
         supported_fn=lambda coordinator: coordinator.device.model
@@ -96,7 +93,7 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
             MachineModel.GS3_MP,
         ),
     ),
-    LaMarzoccoNumberEntityDescription(
+    LaMarzoccoNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="tea_water_duration",
         translation_key="tea_water_duration",
         device_class=NumberDeviceClass.DURATION,
@@ -104,21 +101,35 @@ ENTITIES: tuple[LaMarzoccoNumberEntityDescription, ...] = (
         native_step=PRECISION_WHOLE,
         native_min_value=0,
         native_max_value=30,
-        set_value_fn=lambda coordinator, value: coordinator.device.set_dose_tea_water(
-            int(value)
-        ),
-        native_value_fn=lambda device: device.config.dose_hot_water,
+        set_value_fn=lambda machine, value: machine.set_dose_tea_water(int(value)),
+        native_value_fn=lambda config: config.dose_hot_water,
         supported_fn=lambda coordinator: coordinator.device.model
         in (
             MachineModel.GS3_AV,
             MachineModel.GS3_MP,
         ),
     ),
+    LaMarzoccoNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
+        key="standby_time",
+        translation_key="standby_time",
+        device_class=NumberDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        native_step=10,
+        native_min_value=10,
+        native_max_value=240,
+        entity_category=EntityCategory.CONFIG,
+        set_value_fn=lambda machine, value: machine.set_smart_standby(
+            enabled=machine.config.smart_standby.enabled,
+            mode=machine.config.smart_standby.mode,
+            minutes=int(value),
+        ),
+        native_value_fn=lambda config: config.smart_standby.minutes,
+    ),
 )
 
 
 KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
-    LaMarzoccoKeyNumberEntityDescription(
+    LaMarzoccoKeyNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="prebrew_off",
         translation_key="prebrew_off",
         device_class=NumberDeviceClass.DURATION,
@@ -127,18 +138,16 @@ KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
         native_min_value=1,
         native_max_value=10,
         entity_category=EntityCategory.CONFIG,
-        set_value_fn=lambda device, value, key: device.set_prebrew_time(
+        set_value_fn=lambda machine, value, key: machine.set_prebrew_time(
             prebrew_off_time=value, key=key
         ),
-        native_value_fn=lambda device, key: device.config.prebrew_configuration[
-            key
-        ].off_time,
+        native_value_fn=lambda config, key: config.prebrew_configuration[key].off_time,
         available_fn=lambda device: len(device.config.prebrew_configuration) > 0
         and device.config.prebrew_mode == PrebrewMode.PREBREW,
         supported_fn=lambda coordinator: coordinator.device.model
         != MachineModel.GS3_MP,
     ),
-    LaMarzoccoKeyNumberEntityDescription(
+    LaMarzoccoKeyNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="prebrew_on",
         translation_key="prebrew_on",
         device_class=NumberDeviceClass.DURATION,
@@ -147,18 +156,16 @@ KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
         native_min_value=2,
         native_max_value=10,
         entity_category=EntityCategory.CONFIG,
-        set_value_fn=lambda device, value, key: device.set_prebrew_time(
+        set_value_fn=lambda machine, value, key: machine.set_prebrew_time(
             prebrew_on_time=value, key=key
         ),
-        native_value_fn=lambda device, key: device.config.prebrew_configuration[
-            key
-        ].off_time,
+        native_value_fn=lambda config, key: config.prebrew_configuration[key].off_time,
         available_fn=lambda device: len(device.config.prebrew_configuration) > 0
         and device.config.prebrew_mode == PrebrewMode.PREBREW,
         supported_fn=lambda coordinator: coordinator.device.model
         != MachineModel.GS3_MP,
     ),
-    LaMarzoccoKeyNumberEntityDescription(
+    LaMarzoccoKeyNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="preinfusion_off",
         translation_key="preinfusion_off",
         device_class=NumberDeviceClass.DURATION,
@@ -167,10 +174,10 @@ KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
         native_min_value=2,
         native_max_value=29,
         entity_category=EntityCategory.CONFIG,
-        set_value_fn=lambda device, value, key: device.set_preinfusion_time(
+        set_value_fn=lambda machine, value, key: machine.set_preinfusion_time(
             preinfusion_time=value, key=key
         ),
-        native_value_fn=lambda device, key: device.config.prebrew_configuration[
+        native_value_fn=lambda config, key: config.prebrew_configuration[
             key
         ].preinfusion_time,
         available_fn=lambda device: len(device.config.prebrew_configuration) > 0
@@ -178,7 +185,7 @@ KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
         supported_fn=lambda coordinator: coordinator.device.model
         != MachineModel.GS3_MP,
     ),
-    LaMarzoccoKeyNumberEntityDescription(
+    LaMarzoccoKeyNumberEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="dose",
         translation_key="dose",
         native_unit_of_measurement="ticks",
@@ -186,10 +193,10 @@ KEY_ENTITIES: tuple[LaMarzoccoKeyNumberEntityDescription, ...] = (
         native_min_value=0,
         native_max_value=999,
         entity_category=EntityCategory.CONFIG,
-        set_value_fn=lambda device, ticks, key: device.set_dose(
+        set_value_fn=lambda machine, ticks, key: machine.set_dose(
             dose=int(ticks), key=key
         ),
-        native_value_fn=lambda device, key: device.config.doses[key],
+        native_value_fn=lambda config, key: config.doses[key],
         supported_fn=lambda coordinator: coordinator.device.model
         == MachineModel.GS3_AV,
     ),
@@ -214,10 +221,10 @@ async def async_setup_entry(
     for description in KEY_ENTITIES:
         if description.supported_fn(coordinator):
             num_keys = KEYS_PER_MODEL[coordinator.device.model]
-            for key in range(min(num_keys, 1), num_keys + 1):
-                entities.append(
-                    LaMarzoccoKeyNumberEntity(coordinator, description, key)
-                )
+            entities.extend(
+                LaMarzoccoKeyNumberEntity(coordinator, description, key)
+                for key in range(min(num_keys, 1), num_keys + 1)
+            )
     async_add_entities(entities)
 
 
@@ -229,12 +236,12 @@ class LaMarzoccoNumberEntity(LaMarzoccoEntity, NumberEntity):
     @property
     def native_value(self) -> float:
         """Return the current value."""
-        return self.entity_description.native_value_fn(self.coordinator.device)
+        return self.entity_description.native_value_fn(self.coordinator.device.config)
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
         if value != self.native_value:
-            await self.entity_description.set_value_fn(self.coordinator, value)
+            await self.entity_description.set_value_fn(self.coordinator.device, value)
             self.async_write_ha_state()
 
 
@@ -266,7 +273,7 @@ class LaMarzoccoKeyNumberEntity(LaMarzoccoEntity, NumberEntity):
     def native_value(self) -> float:
         """Return the current value."""
         return self.entity_description.native_value_fn(
-            self.coordinator.device, PhysicalKey(self.pyhsical_key)
+            self.coordinator.device.config, PhysicalKey(self.pyhsical_key)
         )
 
     async def async_set_native_value(self, value: float) -> None:

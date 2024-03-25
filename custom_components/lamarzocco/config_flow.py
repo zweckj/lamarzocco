@@ -215,7 +215,9 @@ class LmConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_user()
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> FlowResult:
         """Perform reauth upon an API authentication error."""
         self.reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"]
@@ -255,18 +257,13 @@ class LmOptionsFlowHandler(OptionsFlowWithConfigEntry):
     ) -> FlowResult:
         """Manage the options for the custom component."""
         if user_input:
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=self.config_entry.data | user_input,
-                options=self.config_entry.options,
-            )
             return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema(
             {
                 vol.Optional(
                     CONF_USE_BLUETOOTH,
-                    default=self.config_entry.options.get(CONF_USE_BLUETOOTH, True),
+                    default=self.options.get(CONF_USE_BLUETOOTH, True),
                 ): cv.boolean,
             }
         )

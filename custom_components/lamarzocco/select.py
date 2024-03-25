@@ -2,19 +2,21 @@
 
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic
 
-from lmcloud.const import MachineModel, PrebrewMode, SteamLevel
+from lmcloud.const import MachineModel, PrebrewMode, SmartStandbyMode, SteamLevel
 from lmcloud.lm_machine import LaMarzoccoMachine
+from lmcloud.models import LaMarzoccoMachineConfig
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import LaMarzoccoMachineUpdateCoordinator
-from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
+from .coordinator import _DeviceT
+from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription, _ConfigT
 
 PBREWBREW_MODE_HA_TO_LM = {
     "disabled": PrebrewMode.DISABLED,
@@ -22,46 +24,63 @@ PBREWBREW_MODE_HA_TO_LM = {
     "typeb": PrebrewMode.PREINFUSION,
 }
 
+STANDBY_MODE_HA_TO_LM = {
+    "poweron": SmartStandbyMode.POWER_ON,
+    "lastbrewing": SmartStandbyMode.LAST_BREWING,
+}
+
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoSelectEntityDescription(
     LaMarzoccoEntityDescription,
     SelectEntityDescription,
+    Generic[_DeviceT, _ConfigT],
 ):
     """Description of a La Marzocco select entity."""
 
-    current_option_fn: Callable[[LaMarzoccoMachine], str]
-    select_option_fn: Callable[
-        [LaMarzoccoMachineUpdateCoordinator, str], Coroutine[Any, Any, bool]
-    ]
+    current_option_fn: Callable[[_ConfigT], str]
+    select_option_fn: Callable[[_DeviceT, str], Coroutine[Any, Any, bool]]
 
 
 ENTITIES: tuple[LaMarzoccoSelectEntityDescription, ...] = (
-    LaMarzoccoSelectEntityDescription(
+    LaMarzoccoSelectEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="steam_temp_select",
         translation_key="steam_temp_select",
         options=["126", "128", "131"],
-        select_option_fn=lambda coordinator, option: coordinator.device.set_steam_level(
+        select_option_fn=lambda machine, option: machine.set_steam_level(
             SteamLevel(int(option))
         ),
-        current_option_fn=lambda device: str(device.steam_level),
+        current_option_fn=lambda config: str(config.steam_level),
         supported_fn=lambda coordinator: coordinator.device.model
         == MachineModel.LINEA_MICRA,
     ),
-    LaMarzoccoSelectEntityDescription(
+    LaMarzoccoSelectEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
         key="prebrew_infusion_select",
         translation_key="prebrew_infusion_select",
         options=["disabled", "prebrew", "typeb"],
-        select_option_fn=lambda coordinator, option: coordinator.device.set_prebrew_mode(
+        entity_category=EntityCategory.CONFIG,
+        select_option_fn=lambda machine, option: machine.set_prebrew_mode(
             PBREWBREW_MODE_HA_TO_LM[option]
         ),
-        current_option_fn=lambda device: device.config.prebrew_mode.lower(),
+        current_option_fn=lambda config: config.prebrew_mode.lower(),
         supported_fn=lambda coordinator: coordinator.device.model
         in (
             MachineModel.GS3_AV,
             MachineModel.LINEA_MICRA,
             MachineModel.LINEA_MINI,
         ),
+    ),
+    LaMarzoccoSelectEntityDescription[LaMarzoccoMachine, LaMarzoccoMachineConfig](
+        key="standby_mode_select",
+        translation_key="standby_mode_select",
+        entity_category=EntityCategory.CONFIG,
+        options=["poweron", "lastbrewing"],
+        select_option_fn=lambda machine, option: machine.set_smart_standby(
+            enabled=machine.config.smart_standby.enabled,
+            mode=STANDBY_MODE_HA_TO_LM[option],
+            minutes=machine.config.smart_standby.minutes,
+        ),
+        current_option_fn=lambda config: config.smart_standby.mode.lower(),
     ),
 )
 
@@ -89,10 +108,14 @@ class LaMarzoccoSelectEntity(LaMarzoccoEntity, SelectEntity):
     @property
     def current_option(self) -> str:
         """Return the current selected option."""
-        return str(self.entity_description.current_option_fn(self.coordinator.device))
+        return str(
+            self.entity_description.current_option_fn(self.coordinator.device.config)
+        )
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         if option != self.current_option:
-            await self.entity_description.select_option_fn(self.coordinator, option)
+            await self.entity_description.select_option_fn(
+                self.coordinator.device, option
+            )
             self.async_write_ha_state()

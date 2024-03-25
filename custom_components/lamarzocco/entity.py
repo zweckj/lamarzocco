@@ -2,34 +2,42 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 from lmcloud.const import FirmwareType
-from lmcloud.lm_machine import LaMarzoccoMachine
+from lmcloud.models import LaMarzoccoDeviceConfig
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import LaMarzoccoMachineUpdateCoordinator
+from .coordinator import LaMarzoccoUpdateCoordinator, _DeviceT
+
+_ConfigT = TypeVar("_ConfigT", bound=LaMarzoccoDeviceConfig)
 
 
 @dataclass(frozen=True, kw_only=True)
-class LaMarzoccoEntityDescription(EntityDescription):
+class LaMarzoccoEntityDescription(EntityDescription, Generic[_DeviceT]):
     """Description for all LM entities."""
 
-    available_fn: Callable[[LaMarzoccoMachine], bool] = lambda _: True
-    supported_fn: Callable[[LaMarzoccoMachineUpdateCoordinator], bool] = lambda _: True
+    available_fn: Callable[[_DeviceT], bool] = lambda _: True
+    supported_fn: Callable[[LaMarzoccoUpdateCoordinator[_DeviceT]], bool] = (
+        lambda _: True
+    )
 
 
-class LaMarzoccoBaseEntity(CoordinatorEntity[LaMarzoccoMachineUpdateCoordinator]):
+class LaMarzoccoBaseEntity(
+    CoordinatorEntity[LaMarzoccoUpdateCoordinator[_DeviceT]],
+    Generic[_DeviceT],
+):
     """Common elements for all entities."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: LaMarzoccoMachineUpdateCoordinator,
+        coordinator: LaMarzoccoUpdateCoordinator[_DeviceT],
         key: str,
     ) -> None:
         """Initialize the entity."""
@@ -46,10 +54,10 @@ class LaMarzoccoBaseEntity(CoordinatorEntity[LaMarzoccoMachineUpdateCoordinator]
         )
 
 
-class LaMarzoccoEntity(LaMarzoccoBaseEntity):
+class LaMarzoccoEntity(LaMarzoccoBaseEntity[_DeviceT], Generic[_DeviceT]):
     """Common elements for all entities."""
 
-    entity_description: LaMarzoccoEntityDescription
+    entity_description: LaMarzoccoEntityDescription[_DeviceT]
 
     @property
     def available(self) -> bool:
@@ -60,8 +68,8 @@ class LaMarzoccoEntity(LaMarzoccoBaseEntity):
 
     def __init__(
         self,
-        coordinator: LaMarzoccoMachineUpdateCoordinator,
-        entity_description: LaMarzoccoEntityDescription,
+        coordinator: LaMarzoccoUpdateCoordinator[_DeviceT],
+        entity_description: LaMarzoccoEntityDescription[_DeviceT],
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator, entity_description.key)
