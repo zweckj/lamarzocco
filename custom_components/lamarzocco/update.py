@@ -1,49 +1,52 @@
-"""Support for La Marzocco Switches."""
+"""Support for La Marzocco update entities."""
 
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
+from pylamarzocco.const import FirmwareType
+from pylamarzocco.exceptions import RequestNotSuccessful
 
 from homeassistant.components.update import (
     UpdateDeviceClass,
     UpdateEntity,
     UpdateEntityDescription,
+    UpdateEntityFeature,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .coordinator import LaMarzoccoConfigEntry
 from .entity import LaMarzoccoEntity, LaMarzoccoEntityDescription
-from .lm_client import LaMarzoccoClient
+
+PARALLEL_UPDATES = 1
 
 
 @dataclass(frozen=True, kw_only=True)
 class LaMarzoccoUpdateEntityDescription(
-    UpdateEntityDescription,
     LaMarzoccoEntityDescription,
+    UpdateEntityDescription,
 ):
-    """Description of an La Marzocco Switch."""
-    current_fw_fn: Callable[[LaMarzoccoClient], str]
-    latest_fw_fn: Callable[[LaMarzoccoClient], str]
+    """Description of a La Marzocco update entities."""
+
+    component: FirmwareType
+
 
 ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
     LaMarzoccoUpdateEntityDescription(
         key="machine_firmware",
         translation_key="machine_firmware",
         device_class=UpdateDeviceClass.FIRMWARE,
-        icon="mdi:cloud-download",
-        current_fw_fn=lambda client: client.firmware_version,
-        latest_fw_fn=lambda client: client.latest_firmware_version,
+        component=FirmwareType.MACHINE,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     LaMarzoccoUpdateEntityDescription(
         key="gateway_firmware",
         translation_key="gateway_firmware",
         device_class=UpdateDeviceClass.FIRMWARE,
-        icon="mdi:cloud-download",
-        current_fw_fn=lambda client: client.gateway_version,
-        latest_fw_fn=lambda client: client.latest_gateway_version,
+        component=FirmwareType.GATEWAY,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
@@ -51,16 +54,16 @@ ENTITIES: tuple[LaMarzoccoUpdateEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    entry: LaMarzoccoConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up update entities and services."""
+    """Create update entities."""
 
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
-        LaMarzoccoUpdateEntity(coordinator, hass, description)
+        LaMarzoccoUpdateEntity(coordinator, description)
         for description in ENTITIES
-        if coordinator.data.model_name in description.supported_models
+        if description.supported_fn(coordinator)
     )
 
 
@@ -68,13 +71,52 @@ class LaMarzoccoUpdateEntity(LaMarzoccoEntity, UpdateEntity):
     """Entity representing the update state."""
 
     entity_description: LaMarzoccoUpdateEntityDescription
+    _attr_supported_features = UpdateEntityFeature.INSTALL
 
     @property
     def installed_version(self) -> str | None:
         """Return the current firmware version."""
-        return self.entity_description.current_fw_fn(self._lm_client)
+        return self.coordinator.device.firmware[
+            self.entity_description.component
+        ].current_version
 
     @property
     def latest_version(self) -> str:
         """Return the latest firmware version."""
-        return self.entity_description.latest_fw_fn(self._lm_client)
+        return self.coordinator.device.firmware[
+            self.entity_description.component
+        ].latest_version
+
+    @property
+    def release_url(self) -> str | None:
+        """Return the release notes URL."""
+        return "https://support-iot.lamarzocco.com/firmware-updates/"
+
+    async def async_install(
+        self, version: str | None, backup: bool, **kwargs: Any
+    ) -> None:
+        """Install an update."""
+        self._attr_in_progress = True
+        self.async_write_ha_state()
+        try:
+            success = await self.coordinator.device.update_firmware(
+                self.entity_description.component
+            )
+        except RequestNotSuccessful as exc:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={
+                    "key": self.entity_description.key,
+                },
+            ) from exc
+        if not success:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={
+                    "key": self.entity_description.key,
+                },
+            )
+        self._attr_in_progress = False
+        await self.coordinator.async_request_refresh()

@@ -1,45 +1,44 @@
 """Diagnostics support for La Marzocco."""
+
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import asdict
+from typing import Any, TypedDict
+
+from pylamarzocco.const import FirmwareType
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
-from .coordinator import LmApiCoordinator
+from .coordinator import LaMarzoccoConfigEntry
 
 TO_REDACT = {
     "serial_number",
-    "machine_sn",
-    "machine_name",
 }
 
 
+class DiagnosticsData(TypedDict):
+    """Diagnostic data for La Marzocco."""
+
+    model: str
+    config: dict[str, Any]
+    firmware: list[dict[FirmwareType, dict[str, Any]]]
+    statistics: dict[str, Any]
+
+
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant,
+    entry: LaMarzoccoConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: LmApiCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
+    device = coordinator.device
     # collect all data sources
-    data = {}
-    data["current_status"] = coordinator.data.current_status
-    data["machine_info"] = coordinator.data.machine_info
-    data["config"] = coordinator.data.config
-    data["statistics"] = coordinator.data.statistics
+    diagnostics_data = DiagnosticsData(
+        model=device.model,
+        config=asdict(device.config),
+        firmware=[{key: asdict(firmware)} for key, firmware in device.firmware.items()],
+        statistics=asdict(device.statistics),
+    )
 
-    # build a firmware section
-    data["firmware"] = {}
-    data["firmware"]["machine"] = {}
-    data["firmware"]["machine"]["version"] = coordinator.data.firmware_version
-    data["firmware"]["machine"][
-        "latest_version"
-    ] = coordinator.data.latest_firmware_version
-    data["firmware"]["gateway"] = {}
-    data["firmware"]["gateway"]["version"] = coordinator.data.gateway_version
-    data["firmware"]["gateway"][
-        "latest_version"
-    ] = coordinator.data.latest_gateway_version
-
-    return async_redact_data(data, TO_REDACT)
+    return async_redact_data(diagnostics_data, TO_REDACT)

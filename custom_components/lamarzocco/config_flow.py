@@ -1,24 +1,43 @@
 """Config flow for La Marzocco integration."""
+
+from __future__ import annotations
+
 from collections.abc import Mapping
 import logging
 from typing import Any
 
-from lmcloud.exceptions import AuthFail, RequestNotSuccessful
+from pylamarzocco.client_cloud import LaMarzoccoCloudClient
+from pylamarzocco.client_local import LaMarzoccoLocalClient
+from pylamarzocco.exceptions import AuthFail, RequestNotSuccessful
+from pylamarzocco.models import LaMarzoccoDeviceInfo
 import voluptuous as vol
 
-from homeassistant import config_entries, core, exceptions
-from homeassistant.components.bluetooth import BluetoothServiceInfo
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.bluetooth import (
+    BluetoothServiceInfo,
+    async_discovered_service_info,
+)
+from homeassistant.components.dhcp import DhcpServiceInfo
+from homeassistant.config_entries import (
+    SOURCE_REAUTH,
+    SOURCE_RECONFIGURE,
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import (
+    CONF_ADDRESS,
     CONF_HOST,
     CONF_MAC,
+    CONF_MODEL,
     CONF_NAME,
     CONF_PASSWORD,
+    CONF_TOKEN,
     CONF_USERNAME,
 )
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.httpx_client import create_async_httpx_client
 from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
@@ -26,158 +45,163 @@ from homeassistant.helpers.selector import (
     SelectSelectorMode,
 )
 
-from .const import CONF_MACHINE, CONF_USE_BLUETOOTH, DOMAIN
-from .lm_client import LaMarzoccoClient
+from .const import CONF_USE_BLUETOOTH, DOMAIN
+
+CONF_MACHINE = "machine"
 
 _LOGGER = logging.getLogger(__name__)
 
-LOGIN_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-    },
-    extra=vol.PREVENT_EXTRA,
-)
 
-
-async def get_machines(
-    hass: core.HomeAssistant, data: dict[str, Any]
-) -> list[tuple[str, str]]:
-    """Validate the user input allows us to connect."""
-
-    try:
-        lm = LaMarzoccoClient()
-        machines = await lm.get_all_machines(data)
-
-    except AuthFail as exc:
-        _LOGGER.error("Server rejected login credentials")
-        raise InvalidAuth from exc
-    except RequestNotSuccessful as exc:
-        _LOGGER.error("Failed to connect to server")
-        raise CannotConnect from exc
-
-    if not machines:
-        raise NoMachines
-
-    return machines
-
-
-class LmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class LmConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for La Marzocco."""
 
     VERSION = 2
 
     def __init__(self) -> None:
-        """Init config flow."""
-        self._discovered: dict[str, str] = {}
-        self.reauth_entry: ConfigEntry | None
+        """Initialize the config flow."""
         self._config: dict[str, Any] = {}
-        self._machines: list[tuple[str, str]] = []
+        self._fleet: dict[str, LaMarzoccoDeviceInfo] = {}
+        self._discovered: dict[str, str] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
 
         errors = {}
 
         if user_input:
+            data: dict[str, Any] = {}
+            if self.source == SOURCE_REAUTH:
+                data = dict(self._get_reauth_entry().data)
             data = {
+                **data,
                 **user_input,
                 **self._discovered,
             }
 
+            cloud_client = LaMarzoccoCloudClient(
+                username=data[CONF_USERNAME],
+                password=data[CONF_PASSWORD],
+                client=create_async_httpx_client(self.hass),
+            )
             try:
-                self._machines = await get_machines(self.hass, data)
-            except InvalidAuth:
+                self._fleet = await cloud_client.get_customer_fleet()
+            except AuthFail:
+                _LOGGER.debug("Server rejected login credentials")
                 errors["base"] = "invalid_auth"
-            except CannotConnect:
+            except RequestNotSuccessful as exc:
+                _LOGGER.error("Error connecting to server: %s", exc)
                 errors["base"] = "cannot_connect"
-            except NoMachines:
-                errors["base"] = "no_machines"
+            else:
+                if not self._fleet:
+                    errors["base"] = "no_machines"
 
             if not errors:
+                if self.source == SOURCE_REAUTH:
+                    return self.async_update_reload_and_abort(
+                        self._get_reauth_entry(), data=data
+                    )
                 if self._discovered:
-                    serials = [machine[0] for machine in self._machines]
-                    if self._discovered[CONF_MACHINE] not in serials:
+                    if self._discovered[CONF_MACHINE] not in self._fleet:
                         errors["base"] = "machine_not_found"
                     else:
                         self._config = data
-                        return await self.async_step_host_selection()
+                        # if DHCP discovery was used, auto fill machine selection
+                        if CONF_HOST in self._discovered:
+                            return await self.async_step_machine_selection(
+                                user_input={
+                                    CONF_HOST: self._discovered[CONF_HOST],
+                                    CONF_MACHINE: self._discovered[CONF_MACHINE],
+                                }
+                            )
+                        # if Bluetooth discovery was used, only select host
+                        return self.async_show_form(
+                            step_id="machine_selection",
+                            data_schema=vol.Schema(
+                                {vol.Optional(CONF_HOST): cv.string}
+                            ),
+                        )
 
             if not errors:
                 self._config = data
                 return await self.async_step_machine_selection()
 
-        return self.async_show_form(
-            step_id="user", data_schema=LOGIN_DATA_SCHEMA, errors=errors
-        )
+        placeholders: dict[str, str] | None = None
+        if self._discovered:
+            self.context["title_placeholders"] = placeholders = {
+                CONF_NAME: self._discovered[CONF_MACHINE]
+            }
 
-    async def async_validate_host(
-        self, serial_number: str, user_input: dict[str, Any]
-    ) -> dict[str, str]:
-        """Validate the host input."""
-        errors: dict[str, str] = {}
-        # if host is set, check if we can connect to it
-        if user_input.get(CONF_HOST):
-            lm = LaMarzoccoClient()
-            if not await lm.check_local_connection(
-                credentials=self._config,
-                host=user_input[CONF_HOST],
-                serial=serial_number,
-            ):
-                errors[CONF_HOST] = "cannot_connect"
-        return errors
-
-    async def async_step_host_selection(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Machine was discovered, only enter host."""
-        errors: dict[str, str] = {}
-        serial_number = self._discovered[CONF_MACHINE]
-        if user_input:
-            errors = await self.async_validate_host(serial_number, user_input)
-            if not errors:
-                return self.async_create_entry(
-                    title=serial_number,
-                    data=self._config | user_input,
-                )
         return self.async_show_form(
-            step_id="host_selection",
-            data_schema=vol.Schema({vol.Optional(CONF_HOST): cv.string}),
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
             errors=errors,
+            description_placeholders=placeholders,
         )
 
     async def async_step_machine_selection(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Let user select machine to connect to."""
         errors: dict[str, str] = {}
         if user_input:
-            serial_number = user_input[CONF_MACHINE]
-            await self.async_set_unique_id(serial_number)
-            self._abort_if_unique_id_configured()
+            if not self._discovered:
+                serial_number = user_input[CONF_MACHINE]
+                if self.source != SOURCE_RECONFIGURE:
+                    await self.async_set_unique_id(serial_number)
+                    self._abort_if_unique_id_configured()
+            else:
+                serial_number = self._discovered[CONF_MACHINE]
 
-            errors = await self.async_validate_host(serial_number, user_input)
+            selected_device = self._fleet[serial_number]
+
+            # validate local connection if host is provided
+            if user_input.get(CONF_HOST):
+                if not await LaMarzoccoLocalClient.validate_connection(
+                    client=create_async_httpx_client(self.hass),
+                    host=user_input[CONF_HOST],
+                    token=selected_device.communication_key,
+                ):
+                    errors[CONF_HOST] = "cannot_connect"
+                else:
+                    self._config[CONF_HOST] = user_input[CONF_HOST]
 
             if not errors:
+                if self.source == SOURCE_RECONFIGURE:
+                    for service_info in async_discovered_service_info(self.hass):
+                        self._discovered[service_info.name] = service_info.address
+
+                    if self._discovered:
+                        return await self.async_step_bluetooth_selection()
+
                 return self.async_create_entry(
-                    title=serial_number,
-                    data=self._config | user_input,
+                    title=selected_device.name,
+                    data={
+                        **self._config,
+                        CONF_NAME: selected_device.name,
+                        CONF_MODEL: selected_device.model,
+                        CONF_TOKEN: selected_device.communication_key,
+                    },
                 )
 
         machine_options = [
             SelectOptionDict(
-                value=serial_number,
-                label=f"{model_name} ({serial_number})",
+                value=device.serial_number,
+                label=f"{device.model} ({device.serial_number})",
             )
-            for serial_number, model_name in self._machines
+            for device in self._fleet.values()
         ]
+
         machine_selection_schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_MACHINE,
-                    default=machine_options[0],
+                    CONF_MACHINE, default=machine_options[0]["value"]
                 ): SelectSelector(
                     SelectSelectorConfig(
                         options=machine_options,
@@ -194,9 +218,45 @@ class LmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_bluetooth_selection(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle Bluetooth device selection."""
+
+        if user_input is not None:
+            return self.async_update_reload_and_abort(
+                self._get_reconfigure_entry(),
+                data={
+                    **self._config,
+                    CONF_MAC: user_input[CONF_MAC],
+                },
+            )
+
+        bt_options = [
+            SelectOptionDict(
+                value=device_mac,
+                label=f"{device_name} ({device_mac})",
+            )
+            for device_name, device_mac in self._discovered.items()
+        ]
+
+        return self.async_show_form(
+            step_id="bluetooth_selection",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_MAC): SelectSelector(
+                        SelectSelectorConfig(
+                            options=bt_options,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                },
+            ),
+        )
+
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfo
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle a flow initialized by discovery over Bluetooth."""
         address = discovery_info.address
         name = discovery_info.name
@@ -218,102 +278,109 @@ class LmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_user()
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
-        """Perform reauth upon an API authentication error."""
-        self.reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
+    async def async_step_dhcp(
+        self, discovery_info: DhcpServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle discovery via dhcp."""
+
+        serial = discovery_info.hostname.upper()
+
+        await self.async_set_unique_id(serial)
+        self._abort_if_unique_id_configured(
+            updates={
+                CONF_HOST: discovery_info.ip,
+                CONF_ADDRESS: discovery_info.macaddress,
+            }
         )
+        self._async_abort_entries_match({CONF_ADDRESS: discovery_info.macaddress})
+
+        _LOGGER.debug(
+            "Discovered La Marzocco machine %s through DHCP at address %s",
+            discovery_info.hostname,
+            discovery_info.ip,
+        )
+
+        self._discovered[CONF_MACHINE] = serial
+        self._discovered[CONF_HOST] = discovery_info.ip
+        self._discovered[CONF_ADDRESS] = discovery_info.macaddress
+
+        return await self.async_step_user()
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Perform reauth upon an API authentication error."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Dialog that informs the user that reauth is required."""
-        errors = {}
-        assert self.reauth_entry
-        if user_input is not None:
-            try:
-                await get_machines(self.hass, self.reauth_entry.data | user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except NoMachines:
-                errors["base"] = "no_machines"
-            if not errors:
-                self.hass.config_entries.async_update_entry(
-                    self.reauth_entry, data=user_input
-                )
-                await self.hass.config_entries.async_reload(self.reauth_entry.entry_id)
-                return self.async_abort(reason="reauth_successful")
+        if not user_input:
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_PASSWORD): str,
+                    }
+                ),
+            )
 
-        return self.async_show_form(
-            step_id="reauth_confirm",
-            data_schema=LOGIN_DATA_SCHEMA,
-            errors=errors,
-        )
+        return await self.async_step_user(user_input)
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Perform reconfiguration of the config entry."""
+        if not user_input:
+            reconfigure_entry = self._get_reconfigure_entry()
+            return self.async_show_form(
+                step_id="reconfigure",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_USERNAME,
+                            default=reconfigure_entry.data[CONF_USERNAME],
+                        ): str,
+                        vol.Required(
+                            CONF_PASSWORD,
+                            default=reconfigure_entry.data[CONF_PASSWORD],
+                        ): str,
+                    }
+                ),
+            )
+
+        return await self.async_step_user(user_input)
 
     @staticmethod
     @callback
     def async_get_options_flow(
         config_entry: ConfigEntry,
-    ) -> config_entries.OptionsFlow:
+    ) -> LmOptionsFlowHandler:
         """Create the options flow."""
-        return OptionsFlowHandler(config_entry)
+        return LmOptionsFlowHandler()
 
 
-class OptionsFlowHandler(config_entries.OptionsFlowWithConfigEntry):
+class LmOptionsFlowHandler(OptionsFlow):
     """Handles options flow for the component."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Manage the options for the custom component."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            if user_input.get(CONF_HOST) and user_input.get(
-                CONF_HOST
-            ) != self.config_entry.data.get(CONF_HOST):
-                lm = LaMarzoccoClient()
-                if not await lm.check_local_connection(
-                    credentials=self.config_entry.data,
-                    host=user_input[CONF_HOST],
-                    serial=self.config_entry.data.get(CONF_MACHINE),
-                ):
-                    errors[CONF_HOST] = "cannot_connect"
-            if not errors:
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry,
-                    data=self.config_entry.data | user_input,
-                    options=self.config_entry.options,
-                )
-                return self.async_create_entry(title="", data=user_input)
+        if user_input:
+            return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_HOST, default=self.config_entry.data.get(CONF_HOST, "")
-                ): cv.string,
-                vol.Optional(
                     CONF_USE_BLUETOOTH,
-                    default=self.config_entry.data.get(CONF_USE_BLUETOOTH, True),
+                    default=self.config_entry.options.get(CONF_USE_BLUETOOTH, True),
                 ): cv.boolean,
             }
         )
 
         return self.async_show_form(
-            step_id="init", data_schema=options_schema, errors=errors
+            step_id="init",
+            data_schema=options_schema,
         )
-
-
-class NoMachines(exceptions.HomeAssistantError):
-    """Error to indicate we couldn't find machines."""
-
-
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(exceptions.HomeAssistantError):
-    """Error to indicate there is invalid auth."""
