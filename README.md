@@ -1,8 +1,8 @@
+> [!CAUTION]
+> This integration is deprecated and very likely broken with 2024.12. Switch the the built in integration instead.
+
 # La Marzocco Home Assistant Integration (Gateway v3)
-<!-- [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration) -->
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![issues_badge](https://img.shields.io/github/issues-raw/zweckj/acaia?style=for-the-badge)](https://github.com/zweckj/lamarzocco/issues)  
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=zweckj&repository=lamarzocco&category=integration)
+
 ## Overview
 
 This is an integration for recent La Marzocco espresso machines that use WiFi to connect to the cloud and can be controlled via the La Marzocco mobile app. This capability was rolled out in late 2019, and La Marzocco supposedly offers a retrofit kit to add it to earlier models. This repo started as fork for https://github.com/rccoleman/lamarzocco, but with the release of La Marzocco's Gateway V3 in 2023 became the new default.
