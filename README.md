@@ -1,5 +1,5 @@
 > [!CAUTION]
-> This integration is deprecated and very likely broken with 2024.12. Switch the the built in integration instead.
+> This integration does not support Gateway v5 (use the core integration instead) and is only intended for backwards compability.
 
 # La Marzocco Home Assistant Integration (Gateway v3)
 
