@@ -1,17 +1,16 @@
 """Tests for the La Marzocco Buttons."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from unittest.mock import MagicMock
-
+from pylamarzocco.exceptions import RequestNotSuccessful
 import pytest
-from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
-from homeassistant.components.button import SERVICE_PRESS
-from homeassistant.const import ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, ATTR_ICON
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
+from syrupy import SnapshotAssertion
 
-from custom_components.lamarzocco.const import DOMAIN
+from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
+from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 
 pytestmark = pytest.mark.usefixtures("init_integration")
 
@@ -19,40 +18,56 @@ pytestmark = pytest.mark.usefixtures("init_integration")
 async def test_start_backflush(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
     entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the La Marzocco Drink Stats."""
-    mock_lamarzocco.start_backflush.return_value = None
+    """Test the La Marzocco backflush button."""
 
-    state = hass.states.get("button.gs01234_start_backflush")
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Start Backflush"
-    assert state.attributes.get(ATTR_ICON) == "mdi:water-sync"
+    serial_number = mock_lamarzocco.serial_number
+
+    state = hass.states.get(f"button.{serial_number}_start_backflush")
     assert state
+    assert state == snapshot
 
     entry = entity_registry.async_get(state.entity_id)
     assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_start_backflush"
+    assert entry == snapshot
 
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
-
-    await hass.services.async_call(
-        BUTTON_DOMAIN,
-        SERVICE_PRESS,
-        {
-            ATTR_ENTITY_ID: "button.gs01234_start_backflush",
-        },
-        blocking=True,
-    )
+    with patch(
+        "homeassistant.components.lamarzocco.button.asyncio.sleep",
+        new_callable=AsyncMock,
+    ):
+        await hass.services.async_call(
+            BUTTON_DOMAIN,
+            SERVICE_PRESS,
+            {
+                ATTR_ENTITY_ID: f"button.{serial_number}_start_backflush",
+            },
+            blocking=True,
+        )
 
     assert len(mock_lamarzocco.start_backflush.mock_calls) == 1
     mock_lamarzocco.start_backflush.assert_called_once()
+
+
+async def test_button_error(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+) -> None:
+    """Test the La Marzocco button error."""
+    serial_number = mock_lamarzocco.serial_number
+
+    state = hass.states.get(f"button.{serial_number}_start_backflush")
+    assert state
+
+    mock_lamarzocco.start_backflush.side_effect = RequestNotSuccessful("Boom.")
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            BUTTON_DOMAIN,
+            SERVICE_PRESS,
+            {
+                ATTR_ENTITY_ID: f"button.{serial_number}_start_backflush",
+            },
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "button_error"

@@ -1,87 +1,98 @@
 """Tests for the La Marzocco Update Entities."""
 
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import MagicMock
-
+from pylamarzocco.const import FirmwareType
+from pylamarzocco.exceptions import RequestNotSuccessful
 import pytest
-from homeassistant.components.update import (
-    ATTR_INSTALLED_VERSION,
-    ATTR_LATEST_VERSION,
-    UpdateDeviceClass,
-)
-from homeassistant.const import (
-    ATTR_DEVICE_CLASS,
-    ATTR_FRIENDLY_NAME,
-    ATTR_ICON,
-)
+from syrupy import SnapshotAssertion
+
+from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN, SERVICE_INSTALL
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.lamarzocco.const import DOMAIN
+from . import async_init_integration
 
-pytestmark = pytest.mark.usefixtures("init_integration")
+from tests.common import MockConfigEntry, snapshot_platform
 
 
-async def test_machine_firmware(
+async def test_update(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
+    mock_config_entry: MockConfigEntry,
     entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the La Marzocco Machine Firmware."""
-
-    state = hass.states.get("update.gs01234_machine_firmware")
-    assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) == UpdateDeviceClass.FIRMWARE
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Machine Firmware"
-    assert state.attributes.get(ATTR_ICON) == "mdi:cloud-download"
-    assert state.attributes.get(ATTR_INSTALLED_VERSION) == "1.1"
-    assert state.attributes.get(ATTR_LATEST_VERSION) == "1.1"
-
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_machine_firmware"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+    """Test the La Marzocco updates."""
+    with patch("homeassistant.components.lamarzocco.PLATFORMS", [Platform.UPDATE]):
+        await async_init_integration(hass, mock_config_entry)
+    await snapshot_platform(hass, entity_registry, snapshot, mock_config_entry.entry_id)
 
 
-async def test_gateway_firmware(
+@pytest.mark.parametrize(
+    ("entity_name", "component"),
+    [
+        ("machine_firmware", FirmwareType.MACHINE),
+        ("gateway_firmware", FirmwareType.GATEWAY),
+    ],
+)
+async def test_update_entites(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
+    mock_config_entry: MockConfigEntry,
+    entity_name: str,
+    component: FirmwareType,
 ) -> None:
-    """Test the La Marzocco Machine Firmware."""
+    """Test the La Marzocco update entities."""
 
-    state = hass.states.get("update.gs01234_gateway_firmware")
+    serial_number = mock_lamarzocco.serial_number
+
+    await async_init_integration(hass, mock_config_entry)
+
+    await hass.services.async_call(
+        UPDATE_DOMAIN,
+        SERVICE_INSTALL,
+        {
+            ATTR_ENTITY_ID: f"update.{serial_number}_{entity_name}",
+        },
+        blocking=True,
+    )
+
+    mock_lamarzocco.update_firmware.assert_called_once_with(component)
+
+
+@pytest.mark.parametrize(
+    ("attr", "value"),
+    [
+        ("side_effect", RequestNotSuccessful("Boom")),
+        ("return_value", False),
+    ],
+)
+async def test_update_error(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    attr: str,
+    value: bool | Exception,
+) -> None:
+    """Test error during update."""
+
+    await async_init_integration(hass, mock_config_entry)
+
+    state = hass.states.get(f"update.{mock_lamarzocco.serial_number}_machine_firmware")
     assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) == UpdateDeviceClass.FIRMWARE
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Gateway Firmware"
-    assert state.attributes.get(ATTR_ICON) == "mdi:cloud-download"
-    assert state.attributes.get(ATTR_INSTALLED_VERSION) == "v2.2-rc0"
-    assert state.attributes.get(ATTR_LATEST_VERSION) == "v3.1-rc4"
 
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_gateway_firmware"
+    setattr(mock_lamarzocco.update_firmware, attr, value)
 
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            UPDATE_DOMAIN,
+            SERVICE_INSTALL,
+            {
+                ATTR_ENTITY_ID: f"update.{mock_lamarzocco.serial_number}_machine_firmware",
+            },
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "update_failed"

@@ -1,95 +1,138 @@
-"""Tests for the La Marzocco Binary Sensors."""
+"""Tests for La Marzocco sensors."""
 
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import MagicMock
-
+from freezegun.api import FrozenDateTimeFactory
+from pylamarzocco.const import MachineModel
+from pylamarzocco.models import LaMarzoccoScale
 import pytest
-from homeassistant.components.sensor import (
-    ATTR_STATE_CLASS,
-    SensorDeviceClass,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    ATTR_DEVICE_CLASS,
-    ATTR_FRIENDLY_NAME,
-    ATTR_ICON,
-    ATTR_UNIT_OF_MEASUREMENT,
-)
+from syrupy import SnapshotAssertion
+
+from homeassistant.const import STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.lamarzocco.const import DOMAIN
+from . import async_init_integration
 
-pytestmark = pytest.mark.usefixtures("init_integration")
+from tests.common import MockConfigEntry, async_fire_time_changed, snapshot_platform
 
 
-async def test_drink_stats(
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_sensors(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
     entity_registry: er.EntityRegistry,
+    mock_config_entry: MockConfigEntry,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the La Marzocco Drink Stats."""
-    state = hass.states.get("sensor.gs01234_drink_statistics")
+    """Test the La Marzocco sensors."""
+
+    with patch("homeassistant.components.lamarzocco.PLATFORMS", [Platform.SENSOR]):
+        await async_init_integration(hass, mock_config_entry)
+    await snapshot_platform(hass, entity_registry, snapshot, mock_config_entry.entry_id)
+
+
+async def test_shot_timer_not_exists(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry_no_local_connection: MockConfigEntry,
+) -> None:
+    """Test the La Marzocco shot timer doesn't exist if host not set."""
+
+    await async_init_integration(hass, mock_config_entry_no_local_connection)
+    state = hass.states.get(f"sensor.{mock_lamarzocco.serial_number}_shot_timer")
+    assert state is None
+
+
+async def test_shot_timer_unavailable(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test the La Marzocco brew_active becomes unavailable."""
+
+    mock_lamarzocco.websocket_connected = False
+    await async_init_integration(hass, mock_config_entry)
+    state = hass.states.get(f"sensor.{mock_lamarzocco.serial_number}_shot_timer")
     assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_STATE_CLASS) == SensorStateClass.MEASUREMENT
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Drink Statistics"
-    assert state.attributes.get(ATTR_ICON) == "mdi:chart-line"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == "drinks"
-    # test extra attributes
-    assert state.attributes.get("drinks_k1") == 13
-    assert state.attributes.get("drinks_k2") == 2
-    assert state.attributes.get("drinks_k3") == 42
-    assert state.attributes.get("drinks_k4") == 34
-    assert state.attributes.get("total_flushing") == 69
-    assert state.state == "82"
+    assert state.state == STATE_UNAVAILABLE
+
+
+@pytest.mark.parametrize("device_fixture", [MachineModel.LINEA_MINI])
+async def test_no_steam_linea_mini(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Ensure Linea Mini has no steam temp."""
+    await async_init_integration(hass, mock_config_entry)
+
+    serial_number = mock_lamarzocco.serial_number
+    state = hass.states.get(f"sensor.{serial_number}_current_temp_steam")
+    assert state is None
+
+
+@pytest.mark.parametrize("device_fixture", [MachineModel.LINEA_MINI])
+async def test_scale_battery(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the scale battery sensor."""
+    await async_init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.lmz_123a45_battery")
+    assert state
+    assert state == snapshot
 
     entry = entity_registry.async_get(state.entity_id)
     assert entry
     assert entry.device_id
-    assert entry.unique_id == "GS01234_drink_stats"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+    assert entry == snapshot
 
 
-async def test_shot_timer(
+@pytest.mark.parametrize(
+    "device_fixture",
+    [MachineModel.GS3_AV, MachineModel.GS3_MP, MachineModel.LINEA_MICRA],
+)
+async def test_other_models_no_scale_battery(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
+    mock_config_entry: MockConfigEntry,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the La Marzocco Drink Stats."""
-    state = hass.states.get("sensor.gs01234_shot_timer")
+    """Ensure the other models don't have a battery sensor."""
+    await async_init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.lmz_123a45_battery")
+    assert state is None
+
+
+@pytest.mark.parametrize("device_fixture", [MachineModel.LINEA_MINI])
+async def test_battery_on_new_scale_added(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Ensure the battery sensor for a new scale is added automatically."""
+
+    mock_lamarzocco.config.scale = None
+    await async_init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.lmz_123a45_battery")
+    assert state is None
+
+    mock_lamarzocco.config.scale = LaMarzoccoScale(
+        connected=True, name="Scale-123A45", address="aa:bb:cc:dd:ee:ff", battery=50
+    )
+
+    freezer.tick(timedelta(minutes=10))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.scale_123a45_battery")
     assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) == SensorDeviceClass.DURATION
-    assert state.attributes.get(ATTR_STATE_CLASS) == SensorStateClass.MEASUREMENT
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Shot Timer"
-    assert state.attributes.get(ATTR_ICON) == "mdi:timer"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == "s"
-
-    assert state.state == "11"
-
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_shot_timer"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"

@@ -1,333 +1,196 @@
 """Tests for La Marzocco switches."""
-from unittest.mock import MagicMock
 
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+from pylamarzocco.exceptions import RequestNotSuccessful
 import pytest
-from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
-from homeassistant.components.switch import SERVICE_TURN_OFF, SERVICE_TURN_ON
-from homeassistant.const import (
-    ATTR_DEVICE_CLASS,
-    ATTR_ENTITY_ID,
-    ATTR_FRIENDLY_NAME,
-    ATTR_ICON,
-    STATE_OFF,
-    STATE_ON,
+from syrupy import SnapshotAssertion
+
+from homeassistant.components.switch import (
+    DOMAIN as SWITCH_DOMAIN,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
 )
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.lamarzocco.const import DOMAIN
-from custom_components.lamarzocco.switch import (
-    ATTR_MAP_AUTO_ON_OFF,
-    ATTR_MAP_MAIN_GS3_AV,
-    ATTR_MAP_PREBREW_GS3_AV,
-    ATTR_MAP_PREINFUSION_GS3_AV,
+from . import WAKE_UP_SLEEP_ENTRY_IDS, async_init_integration
+
+from tests.common import MockConfigEntry, snapshot_platform
+
+
+async def test_switches(
+    hass: HomeAssistant,
+    mock_lamarzocco: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the La Marzocco switches."""
+    with patch("homeassistant.components.lamarzocco.PLATFORMS", [Platform.SWITCH]):
+        await async_init_integration(hass, mock_config_entry)
+    await snapshot_platform(hass, entity_registry, snapshot, mock_config_entry.entry_id)
+
+
+@pytest.mark.parametrize(
+    (
+        "entity_name",
+        "method_name",
+        "kwargs",
+    ),
+    [
+        ("", "set_power", {}),
+        ("_steam_boiler", "set_steam", {}),
+        (
+            "_smart_standby_enabled",
+            "set_smart_standby",
+            {"mode": "LastBrewing", "minutes": 10},
+        ),
+    ],
 )
-
-pytestmark = pytest.mark.usefixtures("init_integration")
-
-
-async def test_main(
+async def test_switches_actions(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
+    mock_config_entry: MockConfigEntry,
+    entity_name: str,
+    method_name: str,
+    kwargs: dict[str, Any],
 ) -> None:
-    """Test the La Marzocco Main switch."""
-    mock_lamarzocco.set_power.return_value = None
+    """Test the La Marzocco switches."""
+    await async_init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("switch.GS01234_main")
-    assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Main"
-    assert state.attributes.get(ATTR_ICON) == "mdi:power"
-    assert state.state == STATE_ON
+    serial_number = mock_lamarzocco.serial_number
 
-    # test extra attributes
-    for key in ATTR_MAP_MAIN_GS3_AV:
-        joined_key = str.join("_", key)
-        assert state.attributes.get(joined_key) == 1023
-
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_main"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+    control_fn = getattr(mock_lamarzocco, method_name)
 
     await hass.services.async_call(
         SWITCH_DOMAIN,
         SERVICE_TURN_OFF,
         {
-            ATTR_ENTITY_ID: "switch.GS01234_main",
+            ATTR_ENTITY_ID: f"switch.{serial_number}{entity_name}",
         },
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_power.mock_calls) == 1
-    mock_lamarzocco.set_power.assert_called_once_with(enabled=False)
+    assert len(control_fn.mock_calls) == 1
+    control_fn.assert_called_once_with(enabled=False, **kwargs)
 
     await hass.services.async_call(
         SWITCH_DOMAIN,
         SERVICE_TURN_ON,
         {
-            ATTR_ENTITY_ID: "switch.GS01234_main",
+            ATTR_ENTITY_ID: f"switch.{serial_number}{entity_name}",
         },
         blocking=True,
     )
 
-    assert len(mock_lamarzocco.set_power.mock_calls) == 2
-    mock_lamarzocco.set_power.assert_called_with(enabled=True)
+    assert len(control_fn.mock_calls) == 2
+    control_fn.assert_called_with(enabled=True, **kwargs)
 
 
-async def test_auto_on_off(
+async def test_auto_on_off_switches(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
+    mock_config_entry: MockConfigEntry,
     entity_registry: er.EntityRegistry,
+    snapshot: SnapshotAssertion,
 ) -> None:
-    """Test the La Marzocco Auto On/Off switch."""
-    mock_lamarzocco.set_auto_on_off_global.return_value = None
+    """Test the auto on off/switches."""
 
-    state = hass.states.get("switch.GS01234_auto_on_off")
-    assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Auto On/Off"
-    assert state.attributes.get(ATTR_ICON) == "mdi:alarm"
-    assert state.state == STATE_ON
+    await async_init_integration(hass, mock_config_entry)
 
-    # test extra attributes
-    for key in ATTR_MAP_AUTO_ON_OFF:
-        joined_key = str.join("_", key)
-        if "auto" in joined_key:
-            assert state.attributes.get(joined_key) == "Disabled"
-        else:
-            assert state.attributes.get(joined_key) == "00:00"
+    serial_number = mock_lamarzocco.serial_number
 
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_auto_on_off"
+    for wake_up_sleep_entry_id in WAKE_UP_SLEEP_ENTRY_IDS:
+        state = hass.states.get(
+            f"switch.{serial_number}_auto_on_off_{wake_up_sleep_entry_id}"
+        )
+        assert state
+        assert state == snapshot(name=f"state.auto_on_off_{wake_up_sleep_entry_id}")
 
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+        entry = entity_registry.async_get(state.entity_id)
+        assert entry
+        assert entry == snapshot(name=f"entry.auto_on_off_{wake_up_sleep_entry_id}")
 
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_OFF,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_auto_on_off",
-        },
-        blocking=True,
-    )
+        await hass.services.async_call(
+            SWITCH_DOMAIN,
+            SERVICE_TURN_OFF,
+            {
+                ATTR_ENTITY_ID: f"switch.{serial_number}_auto_on_off_{wake_up_sleep_entry_id}",
+            },
+            blocking=True,
+        )
 
-    assert len(mock_lamarzocco.set_auto_on_off_global.mock_calls) == 1
-    mock_lamarzocco.set_auto_on_off_global.assert_called_once_with(enable=False)
+        wake_up_sleep_entry = mock_lamarzocco.config.wake_up_sleep_entries[
+            wake_up_sleep_entry_id
+        ]
+        wake_up_sleep_entry.enabled = False
 
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_ON,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_auto_on_off",
-        },
-        blocking=True,
-    )
+        mock_lamarzocco.set_wake_up_sleep.assert_called_with(wake_up_sleep_entry)
 
-    assert len(mock_lamarzocco.set_auto_on_off_global.mock_calls) == 2
-    mock_lamarzocco.set_auto_on_off_global.assert_called_with(enable=True)
+        await hass.services.async_call(
+            SWITCH_DOMAIN,
+            SERVICE_TURN_ON,
+            {
+                ATTR_ENTITY_ID: f"switch.{serial_number}_auto_on_off_{wake_up_sleep_entry_id}",
+            },
+            blocking=True,
+        )
+        wake_up_sleep_entry.enabled = True
+        mock_lamarzocco.set_wake_up_sleep.assert_called_with(wake_up_sleep_entry)
 
 
-async def test_prebrew(
+async def test_switch_exceptions(
     hass: HomeAssistant,
     mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
+    mock_config_entry: MockConfigEntry,
 ) -> None:
-    """Test the La Marzocco Prebrew switch."""
-    mock_lamarzocco.set_prebrew.return_value = None
+    """Test the La Marzocco switches."""
+    await async_init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("switch.GS01234_prebrew")
+    serial_number = mock_lamarzocco.serial_number
+
+    state = hass.states.get(f"switch.{serial_number}")
     assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Prebrew"
-    assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.state == STATE_ON
 
-    # test extra attributes
-    for key in ATTR_MAP_PREBREW_GS3_AV:
-        joined_key = str.join("_", key)
-        if "ton" in joined_key:
-            assert state.attributes.get(joined_key) == 3
-        else:
-            assert state.attributes.get(joined_key) == 5
+    mock_lamarzocco.set_power.side_effect = RequestNotSuccessful("Boom")
 
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_prebrew"
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            SWITCH_DOMAIN,
+            SERVICE_TURN_OFF,
+            {
+                ATTR_ENTITY_ID: f"switch.{serial_number}",
+            },
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "switch_off_error"
 
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            SWITCH_DOMAIN,
+            SERVICE_TURN_ON,
+            {
+                ATTR_ENTITY_ID: f"switch.{serial_number}",
+            },
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "switch_on_error"
 
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_OFF,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_prebrew",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_prebrew.mock_calls) == 1
-    mock_lamarzocco.set_prebrew.assert_called_once_with(enabled=False)
-
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_ON,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_prebrew",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_prebrew.mock_calls) == 2
-    mock_lamarzocco.set_prebrew.assert_called_with(enabled=True)
-
-
-async def test_preinfusion(
-    hass: HomeAssistant,
-    mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
-) -> None:
-    """Test the La Marzocco Preinfusion switch."""
-    mock_lamarzocco.set_preinfusion.return_value = None
-
-    state = hass.states.get("switch.GS01234_preinfusion")
+    state = hass.states.get(f"switch.{serial_number}_auto_on_off_os2oswx")
     assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Preinfusion"
-    assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.state == STATE_OFF
 
-    # test extra attributes
-    for key in ATTR_MAP_PREINFUSION_GS3_AV:
-        joined_key = str.join("_", key)
-        assert state.attributes.get(joined_key) == 4
-
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_preinfusion"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
-
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_ON,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_preinfusion",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_preinfusion.mock_calls) == 1
-    mock_lamarzocco.set_preinfusion.assert_called_once_with(enabled=True)
-
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_OFF,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_preinfusion",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_preinfusion.mock_calls) == 2
-    mock_lamarzocco.set_preinfusion.assert_called_with(enabled=False)
-
-
-async def test_steam_boiler_enable(
-    hass: HomeAssistant,
-    mock_lamarzocco: MagicMock,
-    device_registry: dr.DeviceRegistry,
-    entity_registry: er.EntityRegistry,
-) -> None:
-    """Test the La Marzocco Steam Boiler switch."""
-    mock_lamarzocco.set_steam_boiler_enable.return_value = None
-
-    state = hass.states.get("switch.GS01234_steam_boiler_enable")
-    assert state
-    assert state.attributes.get(ATTR_DEVICE_CLASS) is None
-    assert state.attributes.get(ATTR_FRIENDLY_NAME) == "GS01234 Steam Boiler Enable"
-    assert state.attributes.get(ATTR_ICON) == "mdi:water-boiler"
-    assert state.state == STATE_ON
-
-    entry = entity_registry.async_get(state.entity_id)
-    assert entry
-    assert entry.device_id
-    assert entry.unique_id == "GS01234_steam_boiler_enable"
-
-    device = device_registry.async_get(entry.device_id)
-    assert device
-    assert device.configuration_url is None
-    assert device.entry_type is None
-    assert device.hw_version is None
-    assert device.identifiers == {(DOMAIN, "GS01234")}
-    assert device.manufacturer == "La Marzocco"
-    assert device.name == "GS01234"
-    assert device.sw_version == "1.1"
-
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_OFF,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_steam_boiler_enable",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 1
-    mock_lamarzocco.set_steam_boiler_enable.assert_called_once_with(enable=False)
-
-    await hass.services.async_call(
-        SWITCH_DOMAIN,
-        SERVICE_TURN_ON,
-        {
-            ATTR_ENTITY_ID: "switch.GS01234_steam_boiler_enable",
-        },
-        blocking=True,
-    )
-
-    assert len(mock_lamarzocco.set_steam_boiler_enable.mock_calls) == 2
-    mock_lamarzocco.set_steam_boiler_enable.assert_called_with(enable=True)
+    mock_lamarzocco.set_wake_up_sleep.side_effect = RequestNotSuccessful("Boom")
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            SWITCH_DOMAIN,
+            SERVICE_TURN_OFF,
+            {
+                ATTR_ENTITY_ID: f"switch.{serial_number}_auto_on_off_os2oswx",
+            },
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "auto_on_off_error"

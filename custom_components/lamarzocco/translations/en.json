@@ -2,43 +2,54 @@
     "config": {
         "abort": {
             "already_configured": "Device is already configured",
-            "reauth_successful": "Re-authentication was successful"
+            "reauth_successful": "Re-authentication was successful",
+            "reconfigure_successful": "Re-configuration was successful"
         },
         "error": {
             "cannot_connect": "Failed to connect",
-            "no_machines": "No machines found in account",
             "invalid_auth": "Invalid authentication",
-            "machine_not_found": "The configured machine was not found in your account. Did you login to the correct account?",
-            "unknown": "Unexpected error"
+            "machine_not_found": "Discovered machine not found in given account",
+            "no_machines": "No machines found in account"
         },
-        "flow_title": "La Marzocco Espresso {host}",
         "step": {
+            "bluetooth_selection": {
+                "data": {
+                    "mac": "Device"
+                },
+                "data_description": {
+                    "mac": "Select the Bluetooth device that is your machine"
+                },
+                "description": "Select your device from available Bluetooth devices."
+            },
             "machine_selection": {
                 "data": {
                     "host": "IP address",
                     "machine": "Machine"
                 },
                 "data_description": {
-                    "host": "Local IP address of the machine"
-                }
-            },
-            "host_selection": {
-                "data": {
-                    "host": "IP address"
+                    "host": "Local IP address of the machine",
+                    "machine": "Select the machine you want to integrate"
                 },
-                "data_description": {
-                    "host": "Local IP address of the machine"
-                }
+                "description": "Select the machine you want to integrate. Set the \"IP\" to get access to shot time related sensors."
             },
             "reauth_confirm": {
                 "data": {
-                    "client_id": "Client ID",
-                    "client_secret": "Client Secret",
+                    "password": "Password"
+                },
+                "data_description": {
+                    "password": "Your password from the La Marzocco app"
+                },
+                "description": "Re-authentication required. Please enter your password again."
+            },
+            "reconfigure": {
+                "data": {
                     "password": "Password",
                     "username": "Username"
                 },
-                "description": "One or more of your provided credentials are invalid.",
-                "title": "Reauthenticate integration"
+                "data_description": {
+                    "password": "Your password from the La Marzocco app",
+                    "username": "Your username from the La Marzocco app"
+                }
             },
             "user": {
                 "data": {
@@ -52,172 +63,190 @@
             }
         }
     },
-    "options": {
-        "step": {
-          "init": {
-            "data": {
-                "title": "Update Configuration",
-                "host":"IP address",
-                "use_bluetooth": "Use Bluetooth"
-            }
-          }
-        },
-        "error": {
-            "cannot_connect": "Failed to connect"
-        }
-      },
     "entity": {
         "binary_sensor": {
-            "brew_active": {
-                "name": "Brew Active"
+            "backflush_enabled": {
+                "name": "Backflush active"
             },
-            "water_reservoir": {
-                "name": "Water Reservoir"
+            "brew_active": {
+                "name": "Brewing active"
+            },
+            "water_tank": {
+                "name": "Water tank empty"
             }
         },
         "button": {
             "start_backflush": {
-                "name": "Start Backflush"
+                "name": "Start backflush"
+            }
+        },
+        "calendar": {
+            "auto_on_off_schedule": {
+                "name": "Auto on/off schedule ({id})"
+            }
+        },
+        "number": {
+            "coffee_temp": {
+                "name": "Coffee target temperature"
+            },
+            "dose_key": {
+                "name": "Dose Key {key}"
+            },
+            "prebrew_off": {
+                "name": "Prebrew off time"
+            },
+            "prebrew_off_key": {
+                "name": "Prebrew off time Key {key}"
+            },
+            "prebrew_on": {
+                "name": "Prebrew on time"
+            },
+            "prebrew_on_key": {
+                "name": "Prebrew on time Key {key}"
+            },
+            "preinfusion_off": {
+                "name": "Preinfusion time"
+            },
+            "preinfusion_off_key": {
+                "name": "Preinfusion time Key {key}"
+            },
+            "scale_target_key": {
+                "name": "Brew by weight target {key}"
+            },
+            "smart_standby_time": {
+                "name": "Smart standby time"
+            },
+            "steam_temp": {
+                "name": "Steam target temperature"
+            },
+            "tea_water_duration": {
+                "name": "Tea water duration"
+            }
+        },
+        "select": {
+            "active_bbw": {
+                "name": "Active brew by weight recipe",
+                "state": {
+                    "a": "Recipe A",
+                    "b": "Recipe B"
+                }
+            },
+            "prebrew_infusion_select": {
+                "name": "Prebrew/-infusion mode",
+                "state": {
+                    "disabled": "Disabled",
+                    "prebrew": "Prebrew",
+                    "prebrew_enabled": "Prebrew",
+                    "preinfusion": "Preinfusion"
+                }
+            },
+            "smart_standby_mode": {
+                "name": "Smart standby mode",
+                "state": {
+                    "last_brewing": "Last brewing",
+                    "power_on": "Power on"
+                }
+            },
+            "steam_temp_select": {
+                "name": "Steam level",
+                "state": {
+                    "1": "1",
+                    "2": "2",
+                    "3": "3"
+                }
             }
         },
         "sensor": {
+            "current_temp_coffee": {
+                "name": "Current coffee temperature"
+            },
+            "current_temp_steam": {
+                "name": "Current steam temperature"
+            },
+            "drink_stats_coffee": {
+                "name": "Total coffees made",
+                "unit_of_measurement": "coffees"
+            },
+            "drink_stats_coffee_key": {
+                "name": "Coffees made Key {key}",
+                "unit_of_measurement": "coffees"
+            },
+            "drink_stats_flushing": {
+                "name": "Total flushes made",
+                "unit_of_measurement": "flushes"
+            },
             "shot_timer": {
-                "name": "Shot Timer"
-              },
-            "drink_stats": {
-                "name": "Drink Stats"
+                "name": "Shot timer"
             }
         },
         "switch": {
             "auto_on_off": {
-                "name": "Auto On/Off"
+                "name": "Auto on/off ({id})"
             },
-            "main": {
-                "name": "Main"
+            "smart_standby_enabled": {
+                "name": "Smart standby enabled"
             },
-            "prebrew": {
-                "name": "Prebrew"
-            },
-            "preinfusion": {
-                "name": "Preinfusion"
-            },
-            "steam_boiler_enable": {
-                "name": "Steam Boiler Enable"
+            "steam_boiler": {
+                "name": "Steam boiler"
             }
         },
         "update": {
             "gateway_firmware": {
-                "name": "Gateway Firmware"
+                "name": "Gateway firmware"
             },
             "machine_firmware": {
-                "name": "Machine Firmware"
-            }
-        },
-        "water_heater": {
-            "coffee_boiler": {
-                "name": "Coffee Boiler"
-            },
-            "steam_boiler": {
-                "name": "Steam Boiler"
+                "name": "Machine firmware"
             }
         }
     },
-    "services": {
-        "set_auto_on_off_enable": {
-            "description": "Enable or disable auto on/off for a specific day of the week",
-            "fields": {
-                "day_of_week": {
-                    "description": "Enable or disable auto on/off for a specific day of the week",
-                    "name": "Day of Week"
-                },
-                "enable": {
-                    "description": "Boolean value indicating whether to enable or disable auto on/off",
-                    "name": "Enable"
-                }
-            },
-            "name": "Enable/Disable Auto On/Off"
+    "exceptions": {
+        "api_error": {
+            "message": "Error while communicating with the API"
         },
-        "set_auto_on_off_times": {
-            "description": "Set the auto on and off times for each day of the week",
-            "fields": {
-                "day_of_week": {
-                    "description": "The day of the week to change (mon, tue, wed, thu, fri, sat, sun)",
-                    "name": "Day of Week"
-                },
-                "hour_off": {
-                    "description": "The hour to turn the machine off (0-23)",
-                    "name": "Hour Off"
-                },
-                "hour_on": {
-                    "description": "The hour to turn the machine on (0-23)",
-                    "name": "Hour On"
-                },
-                "minute_off": {
-                    "description": "The minute to turn the machine off (0-59)",
-                    "name": "Minute Off"
-                },
-                "minute_on": {
-                    "description": "The minute to turn the machine on (0-59)",
-                    "name": "Minute On"
-                }
-            },
-            "name": "Set Auto On/Off Times"
+        "authentication_failed": {
+            "message": "Authentication failed"
         },
-        "set_dose": {
-            "description": "Set the dose for a specific button",
-            "fields": {
-                "key": {
-                    "description": "The button to set the dose for (1-4)",
-                    "name": "Key"
-                },
-                "pulses": {
-                    "description": "The dose in pulses (roughly ~0.5ml per pulse)",
-                    "name": "Dose"
-                }
-            },
-            "name": "Set Dose"
+        "auto_on_off_error": {
+            "message": "Error while setting auto on/off to {state} for {id}"
         },
-        "set_dose_hot_water": {
-            "description": "Set the dose for the hot water button",
-            "fields": {
-                "seconds": {
-                    "description": "The number of seconds to stream hot water",
-                    "name": "Dose"
-                }
-            },
-            "name": "Set Hot Water Dose"
+        "button_error": {
+            "message": "Error while executing button {key}"
         },
-        "set_prebrew_times": {
-            "description": "Set the prebrew times for each button",
-            "fields": {
-                "key": {
-                    "description": "The button to set the prebrew time for (1-4)",
-                    "name": "Key"
-                },
-                "seconds_off": {
-                    "description": "The time in seconds for the pump to rest during prebrewing (0-5.9s)",
-                    "name": "Prebrew Time Off"
-                },
-                "seconds_on": {
-                    "description": "The time in seconds for the pump to run during prebrewing (0-5.9s)",
-                    "name": "Prebrew Time On"
-                }
-            },
-            "name": "Set Prebrew Times"
+        "number_exception": {
+            "message": "Error while setting value {value} for number {key}"
         },
-        "set_preinfusion_time": {
-            "description": "Set the preinfusion time for each button",
-            "fields": {
-                "key": {
-                    "description": "The button to set the preinfusion time for (1-4)",
-                    "name": "Key"
+        "number_exception_key": {
+            "message": "Error while setting value {value} for number {key}, key {physical_key}"
+        },
+        "select_option_error": {
+            "message": "Error while setting select option {option} for {key}"
+        },
+        "switch_off_error": {
+            "message": "Error while turning off switch {key}"
+        },
+        "switch_on_error": {
+            "message": "Error while turning on switch {key}"
+        },
+        "update_failed": {
+            "message": "Error while updating {key}"
+        }
+    },
+    "issues": {
+        "unsupported_gateway_firmware": {
+            "description": "Gateway firmware {gateway_version} is no longer supported by this integration, please update.",
+            "title": "Unsupported gateway firmware"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "use_bluetooth": "Use Bluetooth"
                 },
-                "seconds": {
-                    "description": "The time in seconds to run preinfusion (0-24.9s)",
-                    "name": "Preinfusion Time"
+                "data_description": {
+                    "use_bluetooth": "Should the integration try to use Bluetooth to control the machine?"
                 }
-            },
-            "name": "Set Preinfusion Time"
+            }
         }
     }
 }
